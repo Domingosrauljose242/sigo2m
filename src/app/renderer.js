@@ -22,7 +22,11 @@ form.addEventListener('submit', (event) => {
 
 ipcRenderer.on('authentication-result', (_event, result) => {
   if (result.success) {
-    showMessage(`Login realizado com sucesso, ${result.user.username}!`, 'success');
+    showMessage(`Login realizado com sucesso! Redirecionando...`, 'success');
+    localStorage.setItem('user', JSON.stringify(result.user));
+    setTimeout(() => {
+      window.location.href = 'dashboard.html';
+    }, 800);
   } else {
     showMessage('Usuário ou senha inválidos.', 'error');
   }

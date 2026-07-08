@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SIGO2M - Dashboard</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="dashboard-page">
+    <div class="dashboard-container">
+      <header class="dashboard-header">
+        <h2>SIGO2M Dashboard</h2>
+        <div class="user-info">
+          <span id="usernameDisplay">Carregando...</span>
+          <button id="logoutBtn" class="btn-logout">Sair</button>
+        </div>
+      </header>
+
+      <main class="dashboard-content">
+        <section class="welcome-section">
+          <h3>Bem-vindo de volta!</h3>
+          <p>Você acessou com sucesso o painel administrativo do SIGO2M.</p>
+        </section>
+
+        <section class="stats-grid">
+          <div class="stat-card">
+            <h4>Usuários Ativos</h4>
+            <div class="value">1</div>
+          </div>
+          <div class="stat-card">
+            <h4>Status do Sistema</h4>
+            <div class="value" style="color: #10b981;">Online</div>
+          </div>
+          <div class="stat-card">
+            <h4>Última Sincronização</h4>
+            <div class="value" style="font-size: 1.2rem; margin-top: 8px;">Agora mesmo</div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./dashboard.js"></script>
+  </body>
+</html>
