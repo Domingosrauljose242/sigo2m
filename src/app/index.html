@@ -1,6 +1,28 @@
 <!DOCTYPE html>
-<html>
-<body>
-    <h1>Olá, Electron!</h1>
-</body>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SIGO2M - Login</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="login-card">
+      <h1>Entrar no SIGO2M</h1>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="username">Usuário</label>
+          <input id="username" name="username" type="text" autocomplete="username" required />
+        </div>
+        <div class="form-group">
+          <label for="password">Senha</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required />
+        </div>
+        <button type="submit">Acessar</button>
+        <div id="message" class="message"></div>
+      </form>
+    </div>
+
+    <script src="./renderer.js"></script>
+  </body>
 </html>
