@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGO2M - Pagamentos</title>
+    <link rel="stylesheet" href="../medicos/styles.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="container">
+        <header class="main-header">
+            <div class="breadcrumb">
+                <h1>Pagamentos</h1>
+                <nav>Início / <span>Gestão de Pagamentos</span></nav>
+            </div>
+
+            <div class="header-actions">
+                <div class="search-box">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="Pesquisar médico ou ID...">
+                </div>
+                <button class="notification-btn" aria-label="Notificações">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge" id="pendingBadge" style="display:none;"></span>
+                </button>
+                <div class="user-avatar" id="userAvatar">AD</div>
+            </div>
+        </header>
+
+        <section class="content-header">
+            <div class="title-section">
+                <h2>Gestão de Pagamentos</h2>
+                <p id="subtitleText">Controlo de quotas e receitas da Ordem dos Médicos</p>
+            </div>
+            <button class="btn-add" id="btnAddPagamento">
+                <i class="fas fa-plus"></i> Registar Pagamento
+            </button>
+        </section>
+
+        <section class="info-banner">
+            <i class="fas fa-info-circle"></i>
+            <span><strong>Métodos aceites:</strong> Multicaixa Express, Transferência Bancária, Depósito em Conta ou Numerário na sede.</span>
+        </section>
+
+        <section class="cards-grid">
+            <div class="card card-blue">
+                <div class="card-icon">
+                    <i class="fas fa-receipt"></i>
+                </div>
+                <div class="card-info">
+                    <h3>TOTAL DE REGISTOS</h3>
+                    <span class="card-value" id="statTotal">0</span>
+                </div>
+            </div>
+
+            <div class="card card-green">
+                <div class="card-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="card-info">
+                    <h3>PAGAMENTOS CONFIRMADOS</h3>
+                    <span class="card-value" id="statPagos">0</span>
+                </div>
+            </div>
+
+            <div class="card card-orange">
+                <div class="card-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="card-info">
+                    <h3>PENDENTES</h3>
+                    <span class="card-value" id="statPendentes">0</span>
+                </div>
+            </div>
+
+            <div class="card card-purple">
+                <div class="card-icon">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <div class="card-info">
+                    <h3>RECEITA TOTAL</h3>
+                    <span class="card-value card-value-sm" id="statReceita">AOA 0</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="filter-bar">
+            <button class="filter-btn active" data-filter="todos">Todos</button>
+            <button class="filter-btn" data-filter="Pendente">Pendentes</button>
+            <button class="filter-btn" data-filter="Pago">Pagos</button>
+        </section>
+
+        <section class="table-container">
+            <div class="table-header">
+                <h3>Histórico de Pagamentos</h3>
+            </div>
+            <div class="table-responsive">
+                <table id="pagamentosTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Médico</th>
+                            <th>Especialidade</th>
+                            <th>Valor</th>
+                            <th>Data</th>
+                            <th>Método</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pagamentosTableBody">
+                        <tr>
+                            <td colspan="8" class="no-data">A carregar pagamentos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal: Registar Pagamento -->
+    <div id="pagamentoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-credit-card"></i> Registar Pagamento</h3>
+                <button class="close-btn" id="closeModalBtn">&times;</button>
+            </div>
+            <form id="pagamentoForm">
+                <div class="form-group">
+                    <label for="medicoSelect">Médico *</label>
+                    <select id="medicoSelect" required>
+                        <option value="">Seleccionar médico...</option>
+                    </select>
+                    <p class="form-hint" id="medicosHint" style="display:none;">
+                        Nenhum médico registado. Adicione médicos antes de registar pagamentos.
+                    </p>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="valorInput">Valor (AOA) *</label>
+                        <input type="number" id="valorInput" required min="1" step="0.01" placeholder="Ex: 120000">
+                    </div>
+                    <div class="form-group">
+                        <label for="dataInput">Data *</label>
+                        <input type="date" id="dataInput" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="metodoSelect">Método de Pagamento *</label>
+                    <select id="metodoSelect" required>
+                        <option value="Multicaixa Express">Multicaixa Express</option>
+                        <option value="Transferência Bancária">Transferência Bancária</option>
+                        <option value="Depósito em Conta">Depósito em Conta</option>
+                        <option value="Numerário">Numerário na sede</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="statusSelect">Status *</label>
+                    <select id="statusSelect" required>
+                        <option value="Pago">Pago (confirmado)</option>
+                        <option value="Pendente">Pendente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="observacoesInput">Observações <span class="optional">(Opcional)</span></label>
+                    <textarea id="observacoesInput" rows="2" placeholder="Notas adicionais sobre o pagamento..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" id="cancelModalBtn">Cancelar</button>
+                    <button type="submit" class="btn-save">Guardar Pagamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast" style="display:none;"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
