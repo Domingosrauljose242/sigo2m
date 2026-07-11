@@ -5,7 +5,7 @@ const NAV_ITEMS = [
   { id: 'pagamentos', label: 'Pagamentos', icon: 'fa-credit-card', badge: 0, section: null },
   { id: null, label: 'Recibos', icon: 'fa-file-invoice', section: null },
   { id: 'hospitais', label: 'Hospitais', icon: 'fa-hospital', section: 'Gestão' },
-  { id: null, label: 'Médicos', icon: 'fa-user-doctor', section: null },
+  { id: 'medicos', label: 'Médicos', icon: 'fa-user-doctor', section: null },
   { id: null, label: 'Eventos', icon: 'fa-calendar', section: null },
   { id: null, label: 'Relatórios', icon: 'fa-chart-bar', section: 'Sistema' },
   { id: null, label: 'Notificações', icon: 'fa-bell', badge: 5, section: null },

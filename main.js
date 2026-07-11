@@ -93,12 +93,38 @@ ipcMain.on('get-hospitais-lista', (event) => {
 
 // === Médicos ===
 ipcMain.on('get-medicos-lista', (event) => {
-  database.db.all('SELECT id, nome, especialidade FROM medicos ORDER BY nome ASC', [], (err, rows) => {
+  const sql = `SELECT m.id, m.nome, m.especialidade, m.hospital_id, h.nome as hospital_nome
+               FROM medicos m
+               LEFT JOIN hospitais h ON m.hospital_id = h.id
+               ORDER BY m.nome ASC`;
+  database.db.all(sql, [], (err, rows) => {
     if (err) {
       event.reply('medicos-lista-result', { success: false, error: err.message });
       return;
     }
     event.reply('medicos-lista-result', { success: true, lista: rows || [] });
+  });
+});
+
+ipcMain.on('add-medico', (event, dados) => {
+  const sql = `INSERT INTO medicos (nome, especialidade, hospital_id) VALUES (?, ?, ?)`;
+  const params = [dados.nome, dados.especialidade || null, dados.hospital_id || null];
+  database.db.run(sql, params, function (err) {
+    if (err) {
+      event.reply('add-medico-result', { success: false, error: err.message });
+      return;
+    }
+    event.reply('add-medico-result', { success: true, id: this.lastID });
+  });
+});
+
+ipcMain.on('get-medicos-stats', (event) => {
+  database.db.get('SELECT COUNT(*) as total FROM medicos', [], (err, row) => {
+    if (err) {
+      event.reply('medicos-stats-result', { success: false, error: err.message });
+      return;
+    }
+    event.reply('medicos-stats-result', { success: true, total: row.total });
   });
 });
 

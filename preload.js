@@ -26,6 +26,14 @@ contextBridge.exposeInMainWorld('electron', {
   onMedicosLista: (cb) =>
     ipcRenderer.on('medicos-lista-result', (_e, data) => cb(data)),
 
+  addMedico: (dados) => ipcRenderer.send('add-medico', dados),
+  onAddMedicoResult: (cb) =>
+    ipcRenderer.on('add-medico-result', (_e, data) => cb(data)),
+
+  getMedicosStats: () => ipcRenderer.send('get-medicos-stats'),
+  onMedicosStats: (cb) =>
+    ipcRenderer.on('medicos-stats-result', (_e, data) => cb(data)),
+
   // === Pagamentos ===
   addPagamento: (dados) => ipcRenderer.send('add-pagamento', dados),
   onAddPagamentoResult: (cb) =>

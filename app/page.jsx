@@ -5,6 +5,7 @@ import Sidebar from '@/components/Sidebar';
 import Dashboard from '@/components/Dashboard';
 import Hospitais from '@/components/Hospitais';
 import Pagamentos from '@/components/Pagamentos';
+import Medicos from '@/components/Medicos';
 
 export default function Home() {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -17,6 +18,7 @@ export default function Home() {
           {activeSection === 'dashboard' && <Dashboard />}
           {activeSection === 'hospitais' && <Hospitais />}
           {activeSection === 'pagamentos' && <Pagamentos />}
+          {activeSection === 'medicos' && <Medicos />}
         </div>
       </main>
     </div>
