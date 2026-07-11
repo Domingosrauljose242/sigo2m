@@ -93,7 +93,7 @@ ipcMain.on('get-hospitais-lista', (event) => {
 
 // === Médicos ===
 ipcMain.on('get-medicos-lista', (event) => {
-  const sql = `SELECT m.id, m.nome, m.especialidade, m.hospital_id, h.nome as hospital_nome
+  const sql = `SELECT m.id, m.nome, m.especialidade, m.telefone, m.email, m.hospital_id, h.nome as hospital_nome
                FROM medicos m
                LEFT JOIN hospitais h ON m.hospital_id = h.id
                ORDER BY m.nome ASC`;
@@ -107,8 +107,8 @@ ipcMain.on('get-medicos-lista', (event) => {
 });
 
 ipcMain.on('add-medico', (event, dados) => {
-  const sql = `INSERT INTO medicos (nome, especialidade, hospital_id) VALUES (?, ?, ?)`;
-  const params = [dados.nome, dados.especialidade || null, dados.hospital_id || null];
+  const sql = `INSERT INTO medicos (nome, especialidade, telefone, email, hospital_id) VALUES (?, ?, ?, ?, ?)`;
+  const params = [dados.nome, dados.especialidade || null, dados.telefone || null, dados.email || null, dados.hospital_id || null];
   database.db.run(sql, params, function (err) {
     if (err) {
       event.reply('add-medico-result', { success: false, error: err.message });
@@ -130,15 +130,43 @@ ipcMain.on('get-medicos-stats', (event) => {
 
 // === Pagamentos ===
 ipcMain.on('add-pagamento', (event, dados) => {
-  const sql = `INSERT INTO pagamentos (medico_id, valor, data_pagamento, metodo_pagamento, status, observacoes)
-               VALUES (?, ?, ?, ?, ?, ?)`;
-  const params = [dados.medico_id, dados.valor, dados.data_pagamento, dados.metodo_pagamento, dados.status, dados.observacoes || null];
-  database.db.run(sql, params, function (err) {
-    if (err) {
-      event.reply('add-pagamento-result', { success: false, error: err.message });
-      return;
+  const meses = Array.isArray(dados.meses) && dados.meses.length > 0 ? dados.meses : [null];
+  const ano = dados.ano || new Date().getFullYear();
+  
+  database.db.serialize(() => {
+    database.db.run('BEGIN TRANSACTION');
+    let hasError = false;
+    let errorMsg = '';
+
+    const stmt = database.db.prepare(`
+      INSERT INTO pagamentos (medico_id, valor, data_pagamento, metodo_pagamento, status, observacoes, mes_referencia, ano_referencia)
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?
+      WHERE NOT EXISTS (
+        SELECT 1 FROM pagamentos WHERE medico_id = ? AND mes_referencia = ? AND ano_referencia = ?
+      )
+    `);
+
+    for (const mes of meses) {
+      stmt.run(
+        [
+          dados.medico_id, dados.valor, dados.data_pagamento, dados.metodo_pagamento, dados.status, dados.observacoes || null, mes, ano,
+          dados.medico_id, mes, ano
+        ],
+        function (err) {
+          if (err) { hasError = true; errorMsg = err.message; }
+        }
+      );
     }
-    event.reply('add-pagamento-result', { success: true, id: this.lastID });
+
+    stmt.finalize();
+
+    database.db.run('COMMIT', (err) => {
+      if (err || hasError) {
+        event.reply('add-pagamento-result', { success: false, error: err ? err.message : errorMsg });
+      } else {
+        event.reply('add-pagamento-result', { success: true });
+      }
+    });
   });
 });
 

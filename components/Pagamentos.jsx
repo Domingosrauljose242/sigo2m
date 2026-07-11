@@ -13,6 +13,12 @@ function Toast({ msg, error, onClose }) {
 }
 
 const METODOS = ['Multicaixa Express', 'Transferência Bancária', 'Depósito em Conta', 'Numerário'];
+const MESES = [
+  { val: 1, nome: 'Jan' }, { val: 2, nome: 'Fev' }, { val: 3, nome: 'Mar' },
+  { val: 4, nome: 'Abr' }, { val: 5, nome: 'Mai' }, { val: 6, nome: 'Jun' },
+  { val: 7, nome: 'Jul' }, { val: 8, nome: 'Ago' }, { val: 9, nome: 'Set' },
+  { val: 10, nome: 'Out' }, { val: 11, nome: 'Nov' }, { val: 12, nome: 'Dez' }
+];
 
 function formatMoeda(valor) {
   return `AOA ${Number(valor || 0).toLocaleString('pt-AO', { minimumFractionDigits: 0 })}`;
@@ -24,15 +30,35 @@ function formatData(str) {
 }
 
 export default function Pagamentos() {
+  const today = new Date().toISOString().split('T')[0];
+  const currentYear = new Date().getFullYear();
+
   const [lista, setLista] = useState([]);
   const [medicos, setMedicos] = useState([]);
   const [stats, setStats] = useState({ total: 0, pagos: 0, pendentes: 0, receita_total: 0 });
+  
+  // States for the Matrix
+  const [anoQuotas, setAnoQuotas] = useState(currentYear);
+  
+  // States for Filtering & Search
   const [filtro, setFiltro] = useState('todos');
   const [search, setSearch] = useState('');
+  
+  // UI States
   const [modalOpen, setModalOpen] = useState(false);
   const [toast, setToast] = useState({ msg: '', error: false });
-  const today = new Date().toISOString().split('T')[0];
-  const [form, setForm] = useState({ medico_id: '', valor: '', data_pagamento: today, metodo_pagamento: METODOS[0], status: 'Pago', observacoes: '' });
+  
+  // Form State
+  const [form, setForm] = useState({
+    medico_id: '',
+    valorPorMes: 5000,
+    meses: [],
+    ano: currentYear,
+    data_pagamento: today,
+    metodo_pagamento: METODOS[0],
+    status: 'Pago',
+    observacoes: ''
+  });
 
   const showToast = (msg, error = false) => setToast({ msg, error });
 
@@ -59,9 +85,9 @@ export default function Pagamentos() {
       window.electron.onAddPagamentoResult((result) => {
         if (result.success) {
           setModalOpen(false);
-          setForm({ medico_id: '', valor: '', data_pagamento: today, metodo_pagamento: METODOS[0], status: 'Pago', observacoes: '' });
+          setForm({ medico_id: '', valorPorMes: 5000, meses: [], ano: currentYear, data_pagamento: today, metodo_pagamento: METODOS[0], status: 'Pago', observacoes: '' });
           carregarDados();
-          showToast('Pagamento registado com sucesso!');
+          showToast('Pagamentos registados com sucesso!');
         } else {
           showToast(`Erro: ${result.error}`, true);
         }
@@ -81,7 +107,7 @@ export default function Pagamentos() {
     };
   }, []);
 
-  const filtered = lista.filter((p) => {
+  const filteredLista = lista.filter((p) => {
     const matchFiltro = filtro === 'todos' || p.status === filtro;
     const matchSearch = !search ||
       (p.medico_nome || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -89,13 +115,27 @@ export default function Pagamentos() {
     return matchFiltro && matchSearch;
   });
 
+  const toggleMes = (mesVal) => {
+    setForm(prev => {
+      const isSelected = prev.meses.includes(mesVal);
+      return {
+        ...prev,
+        meses: isSelected ? prev.meses.filter(m => m !== mesVal) : [...prev.meses, mesVal]
+      };
+    });
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!form.medico_id) { showToast('Seleccione um médico.', true); return; }
+    if (form.meses.length === 0) { showToast('Seleccione pelo menos um mês.', true); return; }
+    
     if (typeof window !== 'undefined' && window.electron) {
       window.electron.addPagamento({
         medico_id: parseInt(form.medico_id, 10),
-        valor: parseFloat(form.valor),
+        valor: parseFloat(form.valorPorMes),
+        meses: form.meses,
+        ano: parseInt(form.ano, 10),
         data_pagamento: form.data_pagamento,
         metodo_pagamento: form.metodo_pagamento,
         status: form.status,
@@ -104,6 +144,22 @@ export default function Pagamentos() {
     }
   };
 
+  // Build the Quotas Matrix
+  // Map of medicoId -> { ano, meses: { 1: {status}, 2: {status} } }
+  const matrixData = medicos.map(med => {
+    const medicoPagamentos = lista.filter(p => p.medico_id === med.id && p.ano_referencia === parseInt(anoQuotas, 10));
+    const mesesPagos = {};
+    medicoPagamentos.forEach(p => {
+      if (p.mes_referencia) {
+        // If there are duplicates, take the one that is 'Pago' preferably
+        if (!mesesPagos[p.mes_referencia] || p.status === 'Pago') {
+          mesesPagos[p.mes_referencia] = p.status;
+        }
+      }
+    });
+    return { ...med, mesesPagos };
+  });
+
   return (
     <div>
       <Toast msg={toast.msg} error={toast.error} onClose={() => setToast({ msg: '', error: false })} />
@@ -111,18 +167,12 @@ export default function Pagamentos() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1>Pagamentos</h1>
-          <nav>Início / <span>Gestão de Pagamentos</span></nav>
+          <h1>Gestão de Quotas</h1>
+          <nav>Início / <span>Quotas e Pagamentos</span></nav>
         </div>
         <button className="btn-add" onClick={() => setModalOpen(true)}>
           <i className="fas fa-plus" /> Registar Pagamento
         </button>
-      </div>
-
-      {/* Info Banner */}
-      <div className="info-banner">
-        <i className="fas fa-info-circle" />
-        <span><strong>Métodos aceites:</strong> Multicaixa Express, Transferência Bancária, Depósito em Conta ou Numerário na sede.</span>
       </div>
 
       {/* Stats Cards */}
@@ -133,11 +183,11 @@ export default function Pagamentos() {
         </div>
         <div className="card card-green">
           <div className="card-icon"><i className="fas fa-check-circle" /></div>
-          <div><h3>PAGAMENTOS CONFIRMADOS</h3><span className="card-value">{stats.pagos || 0}</span></div>
+          <div><h3>QUOTAS PAGAS</h3><span className="card-value">{stats.pagos || 0}</span></div>
         </div>
         <div className="card card-orange">
           <div className="card-icon"><i className="fas fa-clock" /></div>
-          <div><h3>PENDENTES</h3><span className="card-value">{stats.pendentes || 0}</span></div>
+          <div><h3>QUOTAS PENDENTES</h3><span className="card-value">{stats.pendentes || 0}</span></div>
         </div>
         <div className="card card-purple">
           <div className="card-icon"><i className="fas fa-coins" /></div>
@@ -145,40 +195,81 @@ export default function Pagamentos() {
         </div>
       </div>
 
-      {/* Filter + Search */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div className="filter-bar" style={{ marginBottom: 0 }}>
-          {[['todos', 'Todos'], ['Pendente', 'Pendentes'], ['Pago', 'Pagos']].map(([val, label]) => (
-            <button key={val} className={`filter-btn${filtro === val ? ' active' : ''}`} onClick={() => setFiltro(val)}>
-              {label}
-            </button>
-          ))}
+      {/* Quotas Matrix */}
+      <div className="panel" style={{ padding: 0, overflow: 'hidden', marginBottom: 24 }}>
+        <div className="panel-header" style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3>Matriz Anual de Quotas</h3>
+          <select value={anoQuotas} onChange={(e) => setAnoQuotas(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1' }}>
+            {[currentYear - 1, currentYear, currentYear + 1].map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
         </div>
-        <div className="search-box">
-          <i className="fas fa-search" style={{ color: 'var(--text-muted)' }} />
-          <input type="text" placeholder="Pesquisar médico ou ID..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="table-responsive">
+          <table style={{ margin: 0, minWidth: 900 }}>
+            <thead>
+              <tr>
+                <th style={{ width: 250, borderRight: '1px solid #f1f5f9' }}>Médico</th>
+                {MESES.map(m => <th key={m.val} style={{ textAlign: 'center', width: 45, fontSize: '0.8rem' }}>{m.nome}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {matrixData.length === 0 ? (
+                <tr><td colSpan={13} className="no-data">Nenhum médico registado.</td></tr>
+              ) : matrixData.map(med => (
+                <tr key={med.id}>
+                  <td style={{ borderRight: '1px solid #f1f5f9' }}><strong>{med.nome}</strong><br/><span style={{fontSize: '0.8rem', color: '#64748b'}}>{med.especialidade}</span></td>
+                  {MESES.map(m => {
+                    const status = med.mesesPagos[m.val];
+                    return (
+                      <td key={m.val} style={{ textAlign: 'center' }}>
+                        {status === 'Pago' && <div style={{width: 20, height: 20, background: '#22c55e', borderRadius: 4, margin: '0 auto'}} title="Pago"></div>}
+                        {status === 'Pendente' && <div style={{width: 20, height: 20, background: '#f59e0b', borderRadius: 4, margin: '0 auto'}} title="Pendente"></div>}
+                        {!status && <div style={{width: 20, height: 20, background: '#e2e8f0', borderRadius: 4, margin: '0 auto'}} title="Não pago"></div>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ padding: '12px 24px', fontSize: '0.8rem', color: '#64748b', display: 'flex', gap: 16 }}>
+            <div style={{display: 'flex', alignItems: 'center', gap: 6}}><div style={{width: 12, height: 12, background: '#22c55e', borderRadius: 2}}></div> Pago</div>
+            <div style={{display: 'flex', alignItems: 'center', gap: 6}}><div style={{width: 12, height: 12, background: '#f59e0b', borderRadius: 2}}></div> Pendente</div>
+            <div style={{display: 'flex', alignItems: 'center', gap: 6}}><div style={{width: 12, height: 12, background: '#e2e8f0', borderRadius: 2}}></div> Não Pago</div>
+          </div>
         </div>
       </div>
 
-      {/* Table */}
+      {/* Histórico Table */}
       <div className="table-container">
-        <div className="table-header"><h3>Histórico de Pagamentos</h3></div>
+        <div className="table-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3>Histórico de Registos</h3>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div className="filter-bar" style={{ marginBottom: 0 }}>
+              {[['todos', 'Todos'], ['Pendente', 'Pendentes'], ['Pago', 'Pagos']].map(([val, label]) => (
+                <button key={val} className={`filter-btn${filtro === val ? ' active' : ''}`} onClick={() => setFiltro(val)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <input type="text" placeholder="Pesquisar..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #cbd5e1' }} />
+          </div>
+        </div>
         <div className="table-responsive">
           <table>
             <thead>
               <tr>
-                <th>ID</th><th>Médico</th><th>Especialidade</th>
-                <th>Valor</th><th>Data</th><th>Método</th><th>Status</th><th>Ações</th>
+                <th>ID</th><th>Médico</th><th>Mês / Ano</th>
+                <th>Valor</th><th>Data Registo</th><th>Método</th><th>Status</th><th>Ações</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={8} className="no-data">Nenhum pagamento encontrado.</td></tr>
-              ) : filtered.map((p) => (
+              {filteredLista.length === 0 ? (
+                <tr><td colSpan={8} className="no-data">Nenhum registo encontrado.</td></tr>
+              ) : filteredLista.map((p) => (
                 <tr key={p.id}>
                   <td><strong>#{p.id}</strong></td>
                   <td>{p.medico_nome || '—'}</td>
-                  <td>{p.especialidade || '—'}</td>
+                  <td>{p.mes_referencia ? `${MESES.find(m=>m.val === p.mes_referencia)?.nome} / ${p.ano_referencia}` : 'Geral'}</td>
                   <td className={p.status === 'Pago' ? 'valor-pago' : 'valor-pendente'}>{formatMoeda(p.valor)}</td>
                   <td>{formatData(p.data_pagamento)}</td>
                   <td>{p.metodo_pagamento || '—'}</td>
@@ -203,9 +294,9 @@ export default function Pagamentos() {
 
       {/* Modal */}
       <div className={`modal${modalOpen ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setModalOpen(false)}>
-        <div className="modal-content">
+        <div className="modal-content" style={{ maxWidth: 600 }}>
           <div className="modal-header">
-            <h3><i className="fas fa-credit-card" /> Registar Pagamento</h3>
+            <h3><i className="fas fa-credit-card" /> Registar Pagamento de Quotas</h3>
             <button className="close-btn" onClick={() => setModalOpen(false)}>×</button>
           </div>
           <form onSubmit={handleSubmit}>
@@ -217,41 +308,61 @@ export default function Pagamentos() {
                   <option key={m.id} value={m.id}>{m.nome}{m.especialidade ? ` — ${m.especialidade}` : ''}</option>
                 ))}
               </select>
-              {medicos.length === 0 && <p className="form-hint">Nenhum médico registado. Adicione médicos antes de registar pagamentos.</p>}
             </div>
+            
+            <div className="form-row">
+              <div className="form-group" style={{ flex: 1 }}>
+                <label>Ano Referência *</label>
+                <input type="number" required value={form.ano} onChange={(e) => setForm({ ...form, ano: e.target.value })} />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label>Valor por Mês (AOA) *</label>
+                <input type="number" required min="1" step="0.01" value={form.valorPorMes} onChange={(e) => setForm({ ...form, valorPorMes: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Meses a Pagar * <span className="optional" style={{ float: 'right' }}>Total a cobrar: {formatMoeda(form.valorPorMes * form.meses.length)}</span></label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginTop: 8 }}>
+                {MESES.map(m => (
+                  <label key={m.val} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={form.meses.includes(m.val)} onChange={() => toggleMes(m.val)} />
+                    {m.nome}
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <div className="form-row">
               <div className="form-group">
-                <label>Valor (AOA) *</label>
-                <input type="number" required min="1" step="0.01" placeholder="Ex: 120000"
-                  value={form.valor} onChange={(e) => setForm({ ...form, valor: e.target.value })} />
+                <label>Data do Registo *</label>
+                <input type="date" required value={form.data_pagamento} onChange={(e) => setForm({ ...form, data_pagamento: e.target.value })} />
               </div>
               <div className="form-group">
-                <label>Data *</label>
-                <input type="date" required value={form.data_pagamento}
-                  onChange={(e) => setForm({ ...form, data_pagamento: e.target.value })} />
+                <label>Método de Pagamento *</label>
+                <select value={form.metodo_pagamento} onChange={(e) => setForm({ ...form, metodo_pagamento: e.target.value })}>
+                  {METODOS.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
               </div>
             </div>
-            <div className="form-group">
-              <label>Método de Pagamento *</label>
-              <select value={form.metodo_pagamento} onChange={(e) => setForm({ ...form, metodo_pagamento: e.target.value })}>
-                {METODOS.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Status Inicial *</label>
+                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                  <option value="Pago">Pago (confirmado)</option>
+                  <option value="Pendente">Pendente</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Observações <span className="optional">(Opcional)</span></label>
+                <textarea rows={1} value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
+              </div>
             </div>
-            <div className="form-group">
-              <label>Status *</label>
-              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                <option value="Pago">Pago (confirmado)</option>
-                <option value="Pendente">Pendente</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Observações <span className="optional">(Opcional)</span></label>
-              <textarea rows={2} placeholder="Notas adicionais..."
-                value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
-            </div>
+
             <div className="modal-actions">
               <button type="button" className="btn-cancel" onClick={() => setModalOpen(false)}>Cancelar</button>
-              <button type="submit" className="btn-save">Guardar Pagamento</button>
+              <button type="submit" className="btn-save">Registar {form.meses.length} mês(es)</button>
             </div>
           </form>
         </div>

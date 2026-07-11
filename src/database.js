@@ -77,10 +77,34 @@ function createDatabase({ databasePath } = {}) {
             return;
           }
           migratePagamentosColumns()
+            .then(() => migrateMedicosColumns())
             .then(() => resolve())
             .catch(reject);
         });
 
+      });
+    });
+  }
+
+  function migrateMedicosColumns() {
+    return new Promise((resolve, reject) => {
+      db.all('PRAGMA table_info(medicos)', [], (err, cols) => {
+        if (err) return reject(err);
+        const names = cols.map((c) => c.name);
+        const migrations = [];
+        if (!names.includes('telefone')) migrations.push("ALTER TABLE medicos ADD COLUMN telefone TEXT");
+        if (!names.includes('email')) migrations.push("ALTER TABLE medicos ADD COLUMN email TEXT");
+        
+        if (migrations.length === 0) return resolve();
+        
+        let pending = migrations.length;
+        migrations.forEach((sql) => {
+          db.run(sql, (runErr) => {
+            if (runErr) return reject(runErr);
+            pending -= 1;
+            if (pending === 0) resolve();
+          });
+        });
       });
     });
   }
@@ -95,12 +119,16 @@ function createDatabase({ databasePath } = {}) {
         const names = cols.map((c) => c.name);
         const migrations = [];
         if (!names.includes('metodo_pagamento')) {
-          migrations.push(
-            "ALTER TABLE pagamentos ADD COLUMN metodo_pagamento TEXT DEFAULT 'Multicaixa Express'"
-          );
+          migrations.push("ALTER TABLE pagamentos ADD COLUMN metodo_pagamento TEXT DEFAULT 'Multicaixa Express'");
         }
         if (!names.includes('observacoes')) {
-          migrations.push('ALTER TABLE pagamentos ADD COLUMN observacoes TEXT');
+          migrations.push("ALTER TABLE pagamentos ADD COLUMN observacoes TEXT");
+        }
+        if (!names.includes('mes_referencia')) {
+          migrations.push("ALTER TABLE pagamentos ADD COLUMN mes_referencia INTEGER");
+        }
+        if (!names.includes('ano_referencia')) {
+          migrations.push("ALTER TABLE pagamentos ADD COLUMN ano_referencia INTEGER");
         }
         if (migrations.length === 0) {
           resolve();
