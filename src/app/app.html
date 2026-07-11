@@ -217,6 +217,14 @@
       background-color: #0b0f19; /* Mantendo o fundo escuro integrado caso queira */
     }
   </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="hospital/styles.css">
+  <link rel="stylesheet" href="pagamentos/styles.css">
+
 </head>
 <body>
 
@@ -241,7 +249,7 @@
       
       <div class="menu-category">Principal</div>
       
-      <a href="dashboard.html" class="menu-item active">
+      <a href="#" class="menu-item active" data-target="wrapper-dashboard">
         <div class="menu-item-content">
           <i data-lucide="layout-dashboard"></i>
           <span>Dashboard</span>
@@ -255,7 +263,7 @@
         </div>
       </a>
       
-      <a href="pagamentos/pagamentos.html" class="menu-item">
+      <a href="#" class="menu-item" data-target="wrapper-pagamentos">
         <div class="menu-item-content">
           <i data-lucide="credit-card"></i>
           <span>Pagamentos</span>
@@ -272,7 +280,7 @@
 
       <div class="menu-category">Gestão</div>
       
-      <a href="medicos/medicos.html" class="menu-item">
+      <a href="#" class="menu-item" data-target="wrapper-hospital">
         <div class="menu-item-content">
           <i data-lucide="building-2"></i>
           <span>Hospitais</span>
@@ -322,23 +330,605 @@
 
   </aside>
 
-  <main class="main-content"></main>
+  
+  <main class="main-content" style="overflow: hidden; display: flex; flex-direction: column; position: relative;">
+    <div id="wrapper-dashboard" class="spa-section" style="width: 100%; height: 100%; overflow-y: auto; background-color: #f1f5f9;">
+      <div class="app-container">
+      <div class="main-area">
 
+        <!-- Top bar -->
+        <div class="top-bar">
+          <div class="top-bar-left">
+            <h2>Dashboard</h2>
+            <span class="breadcrumb">Painel principal</span>
+          </div>
+        </div>
+
+        <!-- Scrollable Content -->
+        <div class="content-scroll">
+
+          <!-- ====== SECTION: DASHBOARD ====== -->
+          <div id="sec-dashboard">
+            <!-- Welcome Banner -->
+            <div class="welcome-banner">
+              <div class="welcome-text">
+                <h2>Bom dia, <span id="welcomeName">Administrador</span>! 👋</h2>
+                <p id="welcomeDate">Carregando data...</p>
+                <div class="welcome-actions">
+                  <button class="welcome-btn primary" onclick="scrollToSection('sec-payments')">💳 Registar Pagamento</button>
+                  <button class="welcome-btn" onclick="scrollToSection('sec-reports')">📊 Ver Relatório</button>
+                </div>
+              </div>
+              <div class="welcome-date">
+                <div class="day" id="todayDay">--</div>
+                <div class="month" id="todayMonth">---</div>
+              </div>
+            </div>
+
+            <!-- Metric Cards -->
+            <div class="metrics-row">
+              <div class="metric-card blue">
+                <div class="metric-icon blue">
+                  <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </div>
+                <div class="metric-info">
+                  <span class="metric-label">Médicos Activos</span>
+                  <span class="metric-value" id="stat-active">0</span>
+                  <span class="metric-trend up" id="stat-active-trend">↗ +12 este mês</span>
+                </div>
+              </div>
+
+              <div class="metric-card green">
+                <div class="metric-icon green">
+                  <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+                <div class="metric-info">
+                  <span class="metric-label">Pagamentos em Dia</span>
+                  <span class="metric-value" id="stat-paid">0</span>
+                  <span class="metric-trend up" id="stat-paid-trend">↗ 94.1%</span>
+                </div>
+              </div>
+
+              <div class="metric-card orange">
+                <div class="metric-icon orange">
+                  <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div class="metric-info">
+                  <span class="metric-label">Pagamentos em Atraso</span>
+                  <span class="metric-value" id="stat-overdue">0</span>
+                  <span class="metric-trend down" id="stat-overdue-trend">↘ -5 vs mês anterior</span>
+                </div>
+              </div>
+
+              <div class="metric-card purple">
+                <div class="metric-icon purple">
+                  <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+                <div class="metric-info">
+                  <span class="metric-label">Receita Mensal</span>
+                  <span class="metric-value" id="stat-revenue">AOA 0</span>
+                  <span class="metric-trend up" id="stat-revenue-trend">↗ +8.2% vs Jun</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="charts-row">
+              <!-- Revenue Chart -->
+              <div class="panel">
+                <div class="panel-header">
+                  <div>
+                    <h3>Receitas e Pagamentos Mensais</h3>
+                    <span class="panel-sub">Jan – Dez 2026</span>
+                  </div>
+                  <div class="panel-actions">
+                    <button class="panel-btn active">Este Ano</button>
+                    <button class="panel-btn" onclick="exportData('Excel')">Exportar</button>
+                  </div>
+                </div>
+                <div style="height: 280px; position: relative;">
+                  <canvas id="revenueChart"></canvas>
+                </div>
+              </div>
+
+              <!-- Quota Status -->
+              <div class="panel">
+                <div class="panel-header">
+                  <div>
+                    <h3>Estado de Quotas</h3>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 24px;">
+                  <div style="width: 120px; height: 120px; position: relative; flex-shrink: 0;">
+                    <canvas id="quotaDonutChart"></canvas>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <span style="font-size: 2rem; font-weight: 800; color: var(--oma-navy);" id="quotaPercent">94%</span>
+                    <span style="font-size: 0.78rem; color: var(--text-muted);">Taxa de Pagamento</span>
+                  </div>
+                </div>
+                <div class="quota-list">
+                  <div class="quota-row">
+                    <span class="quota-label"><span class="quota-dot" style="background: var(--green);"></span> Em dia</span>
+                    <div class="quota-bar-wrap">
+                      <div class="quota-bar"><div class="quota-bar-fill" id="quotaBarPaid" style="width: 94%; background: var(--green);"></div></div>
+                      <span class="quota-count" id="quotaPaidCount">1,174</span>
+                    </div>
+                  </div>
+                  <div class="quota-row">
+                    <span class="quota-label"><span class="quota-dot" style="background: var(--orange);"></span> Em atraso</span>
+                    <div class="quota-bar-wrap">
+                      <div class="quota-bar"><div class="quota-bar-fill" id="quotaBarOverdue" style="width: 6%; background: var(--orange);"></div></div>
+                      <span class="quota-count" id="quotaOverdueCount">73</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ====== SECTION: PAYMENTS ====== -->
+          <div id="sec-payments" style="display:none;">
+            <div class="section-title">Gestão de Pagamentos Pendentes</div>
+            <div class="panel" style="margin-bottom: 16px;">
+              <div style="font-size: 0.88rem; color: var(--text-secondary);">
+                <strong style="color: var(--oma-navy);">Métodos de Pagamento Aceites:</strong> Multicaixa Express, Transferência Bancária, Depósito em Conta ou Numerário na sede.
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Médicos com Pendências</h3>
+              </div>
+              <div style="overflow-x: auto;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Médico</th>
+                      <th>Cédula</th>
+                      <th>Valor Devido</th>
+                      <th>Dias Atraso</th>
+                      <th>Status</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pendingPaymentsTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ====== SECTION: ISSUANCE ====== -->
+          <div id="sec-issuance" style="display:none;">
+            <div class="section-title">Fluxo de Emissão de Carteiras</div>
+            <div class="panel" style="margin-bottom: 16px;">
+              <div style="background: rgba(245,197,24,0.08); border:1px solid rgba(245,197,24,0.3); border-radius:8px; padding:14px 18px; display:flex; align-items:center; gap:12px; font-size:0.88rem; color:#92400e;">
+                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span><strong>Vínculo Automático:</strong> A carteira só é produzida após confirmação de pagamento.</span>
+              </div>
+            </div>
+            <div id="issuancePipelineContainer"></div>
+          </div>
+
+          <!-- ====== SECTION: REPORTS ====== -->
+          <div id="sec-reports" style="display:none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+              <div class="section-title" style="margin-bottom: 0;">Financeiro & Relatórios</div>
+              <div style="display:flex; gap:8px;">
+                <button class="btn btn-outline" onclick="exportData('PDF')">📄 Exportar PDF</button>
+                <button class="btn btn-primary" onclick="exportData('Excel')">📊 Exportar Excel</button>
+              </div>
+            </div>
+            <div class="charts-row" style="margin-bottom: 20px;">
+              <div class="panel">
+                <div class="panel-header">
+                  <h3>Receita Anual Comparativa</h3>
+                </div>
+                <div style="height: 260px; position: relative;">
+                  <canvas id="revenueCompareChart"></canvas>
+                </div>
+              </div>
+              <div class="panel">
+                <div class="panel-header">
+                  <h3>Inadimplência por Região</h3>
+                </div>
+                <div style="height: 260px; position: relative;">
+                  <canvas id="delinquencyChart"></canvas>
+                </div>
+              </div>
+            </div>
+            <div class="metrics-row" style="grid-template-columns: repeat(3, 1fr);">
+              <div class="metric-card green" style="flex-direction: column; gap: 4px;">
+                <span class="metric-label">Projeção 30 dias</span>
+                <span class="metric-value" style="font-size: 1.4rem;">AOA 2.4M</span>
+                <span class="metric-trend" style="font-size:0.75rem; color:var(--text-muted);">49 carteiras expirando</span>
+              </div>
+              <div class="metric-card blue" style="flex-direction: column; gap: 4px;">
+                <span class="metric-label">Projeção 60 dias</span>
+                <span class="metric-value" style="font-size: 1.4rem;">AOA 3.8M</span>
+                <span class="metric-trend" style="font-size:0.75rem; color:var(--text-muted);">76 carteiras expirando</span>
+              </div>
+              <div class="metric-card purple" style="flex-direction: column; gap: 4px;">
+                <span class="metric-label">Projeção 90 dias</span>
+                <span class="metric-value" style="font-size: 1.4rem;">AOA 5.1M</span>
+                <span class="metric-trend" style="font-size:0.75rem; color:var(--text-muted);">103 carteiras expirando</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ====== SECTION: NOTIFICATIONS ====== -->
+          <div id="sec-notifications" style="display:none;">
+            <div class="section-title">Configuração de Notificações</div>
+            <div class="panel" style="max-width: 700px;">
+              <div class="panel-header">
+                <h3>Regras de Alertas Automáticos</h3>
+              </div>
+              <form id="notificationSettingsForm" onsubmit="saveNotificationSettings(event)">
+                <div class="settings-grid">
+                  <div class="form-group">
+                    <label for="expiryReminderDays">Lembrete antes do Vencimento (Dias)</label>
+                    <input type="number" id="expiryReminderDays" value="15" required style="background:#f8fafc; color:var(--text-primary); border-color:#e2e8f0;" />
+                  </div>
+                  <div class="form-group">
+                    <label for="delayNoticeInterval">Intervalo de Aviso de Atraso (Dias)</label>
+                    <input type="number" id="delayNoticeInterval" value="7" required style="background:#f8fafc; color:var(--text-primary); border-color:#e2e8f0;" />
+                  </div>
+                  <div class="full checkbox-row">
+                    <input type="checkbox" id="sendEmailReceipt" checked />
+                    <label for="sendEmailReceipt">Enviar e-mail de confirmação de pagamento automaticamente</label>
+                  </div>
+                  <div class="full checkbox-row">
+                    <input type="checkbox" id="sendSmsReminder" checked />
+                    <label for="sendSmsReminder">Ativar SMS de cobrança para médicos inadimplentes</label>
+                  </div>
+                  <div class="full" style="margin-top: 12px;">
+                    <button type="submit" class="btn btn-primary" style="padding: 12px 28px;">Salvar Configurações</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+
+        </div><!-- /content-scroll -->
+      </div><!-- /main-area -->
+    </div><!-- /app-container -->
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="historyModal">
+      <div class="modal-card">
+        <header class="modal-header">
+          <h3 id="modalTitle">Histórico do Médico</h3>
+          <button class="close-btn" onclick="closeHistoryModal()">&times;</button>
+        </header>
+        <div class="modal-body" id="modalHistoryContent"></div>
+      </div>
+    </div>
+
+    <!-- TOASTS -->
+    <div class="toast-container" id="toastContainer"></div>
+    </div>
+    
+    <div id="wrapper-hospital" class="spa-section" style="display:none; width: 100%; height: 100%; overflow-y: auto; background-color: #f8fafc;">
+      <div class="container">
+        <header class="main-header">
+            <div class="breadcrumb">
+                <h1>Hospitais</h1>
+                <nav>Início / <span>Hospitais e Clínicas</span></nav>
+            </div>
+            
+            <div class="header-actions">
+                <div class="search-box">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" placeholder="Pesquisar hospital...">
+                </div>
+                <button class="notification-btn" aria-label="Notificações">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge"></span>
+                </button>
+                <div class="user-avatar">AD</div>
+            </div>
+        </header>
+
+        <section class="content-header">
+            <div class="title-section">
+                <h2>Hospitais e Clínicas</h2>
+                <p>38 unidades de saúde registadas na província do Moxico</p>
+            </div>
+            <button class="btn-add">
+                <i class="fas fa-plus"></i> Adicionar Hospital
+            </button>
+        </section>
+
+        <section class="cards-grid">
+            
+            <div class="card card-blue">
+                <div class="card-icon">
+                    <i class="fas fa-hospital-user"></i>
+                </div>
+                <div class="card-info">
+                    <h3>TOTAL DE UNIDADES</h3>
+                    <span class="card-value">38</span>
+                </div>
+            </div>
+
+            <div class="card card-green">
+                <div class="card-icon">
+                    <i class="fas fa-hospital"></i>
+                </div>
+                <div class="card-info">
+                    <h3>HOSPITAIS PÚBLICOS</h3>
+                    <span class="card-value">24</span>
+                </div>
+            </div>
+
+            <div class="card card-purple">
+                <div class="card-icon">
+                    <i class="fas fa-clinic-medical"></i>
+                </div>
+                <div class="card-info">
+                    <h3>CLÍNICAS PRIVADAS</h3>
+                    <span class="card-value">14</span>
+                </div>
+            </div>
+
+            <div class="card card-orange">
+                <div class="card-icon">
+                    <i class="fas fa-user-md"></i>
+                </div>
+                <div class="card-info">
+                    <h3>MÉDICOS DISTRIBUÍDOS</h3>
+                    <span class="card-value">1,247</span>
+                </div>
+            </div>
+            </section>
+            <section class="table-container">
+    <div class="table-header">
+        <h3>Unidades Cadastradas</h3>
+    </div>
+    <div class="table-responsive">
+        <table id="hospitaisTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome do Hospital</th>
+                    <th>Endereço</th>
+                    <th>Telefone</th>
+                </tr>
+            </thead>
+            <tbody id="hospitaisTableBody">
+                <tr>
+                    <td colspan="4" class="no-data">Nenhum hospital localizado no banco.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+        </section>
+    </div>
+    
+    <div id="hospitalModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-plus"></i> Novo Hospital</h3>
+            <button class="close-btn" id="closeModalBtn">&times;</button>
+        </div>
+        <form id="hospitalForm">
+            <div class="form-group">
+                <label for="hospitalName">Nome do Hospital *</label>
+                <input type="text" id="hospitalName" required placeholder="Ex: Hospital Central do Moxico">
+            </div>
+            <div class="form-group">
+                <label for="hospitalAddress">Endereço *</label>
+                <input type="text" id="hospitalAddress" required placeholder="Ex: Rua Direita da Lwena, Bairro Central">
+            </div>
+            <div class="form-group">
+                <label for="hospitalPhone">Telefone <span class="optional">(Opcional)</span></label>
+                <input type="tel" id="hospitalPhone" placeholder="Ex: +244 9XX XXX XXX">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" id="cancelModalBtn">Cancelar</button>
+                <button type="submit" class="btn-save">Salvar Unidade</button>
+            </div>
+        </form>
+    </div>
+</div>
+    </div>
+
+    <div id="wrapper-pagamentos" class="spa-section" style="display:none; width: 100%; height: 100%; overflow-y: auto; background-color: #f8fafc;">
+      <div class="container">
+        <header class="main-header">
+            <div class="breadcrumb">
+                <h1>Pagamentos</h1>
+                <nav>Início / <span>Gestão de Pagamentos</span></nav>
+            </div>
+
+            <div class="header-actions">
+                <div class="search-box">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="Pesquisar médico ou ID...">
+                </div>
+                <button class="notification-btn" aria-label="Notificações">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge" id="pendingBadge" style="display:none;"></span>
+                </button>
+                <div class="user-avatar" id="userAvatar">AD</div>
+            </div>
+        </header>
+
+        <section class="content-header">
+            <div class="title-section">
+                <h2>Gestão de Pagamentos</h2>
+                <p id="subtitleText">Controlo de quotas e receitas da Ordem dos Médicos</p>
+            </div>
+            <button class="btn-add" id="btnAddPagamento">
+                <i class="fas fa-plus"></i> Registar Pagamento
+            </button>
+        </section>
+
+        <section class="info-banner">
+            <i class="fas fa-info-circle"></i>
+            <span><strong>Métodos aceites:</strong> Multicaixa Express, Transferência Bancária, Depósito em Conta ou Numerário na sede.</span>
+        </section>
+
+        <section class="cards-grid">
+            <div class="card card-blue">
+                <div class="card-icon">
+                    <i class="fas fa-receipt"></i>
+                </div>
+                <div class="card-info">
+                    <h3>TOTAL DE REGISTOS</h3>
+                    <span class="card-value" id="statTotal">0</span>
+                </div>
+            </div>
+
+            <div class="card card-green">
+                <div class="card-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="card-info">
+                    <h3>PAGAMENTOS CONFIRMADOS</h3>
+                    <span class="card-value" id="statPagos">0</span>
+                </div>
+            </div>
+
+            <div class="card card-orange">
+                <div class="card-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="card-info">
+                    <h3>PENDENTES</h3>
+                    <span class="card-value" id="statPendentes">0</span>
+                </div>
+            </div>
+
+            <div class="card card-purple">
+                <div class="card-icon">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <div class="card-info">
+                    <h3>RECEITA TOTAL</h3>
+                    <span class="card-value card-value-sm" id="statReceita">AOA 0</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="filter-bar">
+            <button class="filter-btn active" data-filter="todos">Todos</button>
+            <button class="filter-btn" data-filter="Pendente">Pendentes</button>
+            <button class="filter-btn" data-filter="Pago">Pagos</button>
+        </section>
+
+        <section class="table-container">
+            <div class="table-header">
+                <h3>Histórico de Pagamentos</h3>
+            </div>
+            <div class="table-responsive">
+                <table id="pagamentosTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Médico</th>
+                            <th>Especialidade</th>
+                            <th>Valor</th>
+                            <th>Data</th>
+                            <th>Método</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pagamentosTableBody">
+                        <tr>
+                            <td colspan="8" class="no-data">A carregar pagamentos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal: Registar Pagamento -->
+    <div id="pagamentoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-credit-card"></i> Registar Pagamento</h3>
+                <button class="close-btn" id="closeModalBtn">&times;</button>
+            </div>
+            <form id="pagamentoForm">
+                <div class="form-group">
+                    <label for="medicoSelect">Médico *</label>
+                    <select id="medicoSelect" required>
+                        <option value="">Seleccionar médico...</option>
+                    </select>
+                    <p class="form-hint" id="medicosHint" style="display:none;">
+                        Nenhum médico registado. Adicione médicos antes de registar pagamentos.
+                    </p>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="valorInput">Valor (AOA) *</label>
+                        <input type="number" id="valorInput" required min="1" step="0.01" placeholder="Ex: 120000">
+                    </div>
+                    <div class="form-group">
+                        <label for="dataInput">Data *</label>
+                        <input type="date" id="dataInput" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="metodoSelect">Método de Pagamento *</label>
+                    <select id="metodoSelect" required>
+                        <option value="Multicaixa Express">Multicaixa Express</option>
+                        <option value="Transferência Bancária">Transferência Bancária</option>
+                        <option value="Depósito em Conta">Depósito em Conta</option>
+                        <option value="Numerário">Numerário na sede</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="statusSelect">Status *</label>
+                    <select id="statusSelect" required>
+                        <option value="Pago">Pago (confirmado)</option>
+                        <option value="Pendente">Pendente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="observacoesInput">Observações <span class="optional">(Opcional)</span></label>
+                    <textarea id="observacoesInput" rows="2" placeholder="Notas adicionais sobre o pagamento..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" id="cancelModalBtn">Cancelar</button>
+                    <button type="submit" class="btn-save">Guardar Pagamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast" style="display:none;"></div>
+    </div>
+  </main>
+
+
+  
   <script>
-    // Inicializa os ícones do Lucide
     lucide.createIcons();
 
-    // Lógica em JS simples para alternar o estado ativo de clique
     const menuItems = document.querySelectorAll('.menu-item');
-    
     menuItems.forEach(item => {
       item.addEventListener('click', function(e) {
-        // Remove a classe ativa de todos
-        menuItems.forEach(i => i.classList.remove('active'));
-        // Adiciona ao item clicado
-        this.classList.add('active');
+        e.preventDefault();
+        const target = this.getAttribute('data-target');
+        if (target) {
+          menuItems.forEach(i => i.classList.remove('active'));
+          this.classList.add('active');
+          
+          document.querySelectorAll('.spa-section').forEach(sec => sec.style.display = 'none');
+          const targetEl = document.getElementById(target);
+          if(targetEl) targetEl.style.display = 'block';
+        }
       });
     });
   </script>
+  <script src="dashboard.js"></script>
+  <script src="hospital/script.js"></script>
+  <script src="pagamentos/script.js"></script>
+
 </body>
 </html>
