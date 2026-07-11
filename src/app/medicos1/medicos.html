@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="pt-AO">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIGOM-MX</title>
+<style>
+  /* =====================================================================
+     SIGOM-MX — Aplicação única (Painel + Médicos + Formulário)
+     Sistema Integrado de Gestão da Ordem dos Médicos do Moxico
+     ---------------------------------------------------------------------
+     Tudo corre numa única página (SPA) para que o estado dos médicos
+     (array "medicos" em memória) seja partilhado entre o Painel, a Lista
+     e o Formulário de Adicionar/Editar, sem depender de armazenamento
+     do navegador. Isto é o que torna o Total e o Editar interactivos.
+     ===================================================================== */
+  :root{
+    --blue:#3b5fe0; --blue-dark:#2f4bc4; --blue-bg:#eef1fd;
+    --green:#1fa971; --green-bg:#e7f7f0;
+    --amber:#e0912e; --amber-bg:#fdf3e4;
+    --purple:#8b5cf6; --purple-bg:#f2ecfe;
+    --red:#e0483b; --red-bg:#fdeceb;
+    --ink:#171a2b; --gray-700:#4b5066; --gray-500:#7c8093;
+    --gray-300:#d7dae3; --gray-100:#eef0f5; --page-bg:#f4f5f9; --white:#ffffff;
+    --radius:12px;
+    --shadow-sm:0 1px 2px rgba(23,26,43,.06);
+    --shadow-md:0 4px 16px rgba(23,26,43,.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;background:var(--page-bg);color:var(--ink);-webkit-font-smoothing:antialiased;}
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;}
+
+  /* ---------- Topbar ---------- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;background:var(--white);border-bottom:1px solid var(--gray-100);padding:14px 28px;gap:24px;position:sticky;top:0;z-index:30;}
+  .brand{display:flex;flex-direction:column;gap:2px;min-width:160px;}
+  .brand h1{font-size:19px;margin:0;font-weight:700;letter-spacing:-.2px;}
+  .breadcrumb{font-size:12.5px;color:var(--gray-500);}
+  .breadcrumb b{color:var(--gray-700);font-weight:600;}
+  .search-wrap{flex:1;max-width:420px;position:relative;}
+  .search-wrap input{width:100%;padding:10px 14px 10px 38px;border-radius:10px;border:1px solid var(--gray-300);background:var(--gray-100);font-size:13.5px;outline:none;transition:border-color .15s,background .15s;}
+  .search-wrap input:focus{border-color:var(--blue);background:var(--white);}
+  .search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--gray-500);}
+  .top-actions{display:flex;align-items:center;gap:14px;}
+  .icon-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--gray-300);background:var(--white);display:flex;align-items:center;justify-content:center;color:var(--gray-700);}
+  .icon-btn svg{width:17px;height:17px;}
+  .icon-btn.alert{background:var(--red-bg);border-color:var(--red-bg);color:var(--red);}
+  .avatar{width:38px;height:38px;border-radius:10px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;letter-spacing:.3px;}
+
+  /* ---------- Nav tabs ---------- */
+  .nav-tabs{display:flex;gap:4px;background:var(--white);border-bottom:1px solid var(--gray-100);padding:0 28px;position:sticky;top:67px;z-index:29;}
+  .nav-tab{padding:13px 16px;font-size:13.5px;font-weight:600;color:var(--gray-500);border-bottom:2px solid transparent;display:flex;align-items:center;gap:8px;}
+  .nav-tab svg{width:15px;height:15px;}
+  .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  .nav-tab:hover:not(.active){color:var(--ink);}
+
+  /* ---------- Page container ---------- */
+  .page{max-width:1280px;margin:0 auto;padding:28px 28px 60px;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .page-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;gap:16px;}
+  .page-head h2{font-size:26px;margin:0 0 6px;font-weight:700;letter-spacing:-.3px;}
+  .page-head p{margin:0;color:var(--gray-500);font-size:13.5px;}
+  .head-actions{display:flex;gap:10px;}
+
+  /* ---------- Botões ---------- */
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;font-size:13.5px;font-weight:600;border:1px solid transparent;transition:transform .1s,box-shadow .15s,background .15s;}
+  .btn svg{width:15px;height:15px;}
+  .btn:active{transform:translateY(1px);}
+  .btn-outline{background:var(--white);border-color:var(--gray-300);color:var(--ink);}
+  .btn-outline:hover{background:var(--gray-100);}
+  .btn-primary{background:var(--blue);color:#fff;box-shadow:var(--shadow-sm);}
+  .btn-primary:hover{background:var(--blue-dark);}
+  .btn[disabled]{opacity:.5;cursor:not-allowed;}
+
+  /* ---------- Painel / Card genérico ---------- */
+  .panel{background:var(--white);border-radius:var(--radius);border:1px solid var(--gray-100);box-shadow:var(--shadow-sm);overflow:hidden;}
+  .panel-header{padding:16px 20px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;}
+  .panel-header h3{margin:0;font-size:15px;font-weight:700;}
+  .panel-body{padding:20px;}
+
+  /* ---------- Stat cards ---------- */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px;}
+  .stat-card{position:relative;overflow:hidden;background:var(--white);border-radius:var(--radius);padding:18px 20px;border:1px solid var(--gray-100);border-left:4px solid var(--card-accent);box-shadow:var(--shadow-sm);transition:box-shadow .2s;}
+  .stat-card::after{content:"";position:absolute;right:-26px;top:-26px;width:90px;height:90px;border-radius:50%;background:var(--card-accent-bg);opacity:.9;}
+  .stat-card .row{display:flex;align-items:center;gap:10px;margin-bottom:14px;position:relative;z-index:1;}
+  .stat-icon{width:30px;height:30px;border-radius:9px;background:var(--card-accent-bg);display:flex;align-items:center;justify-content:center;color:var(--card-accent);}
+  .stat-icon svg{width:16px;height:16px;}
+  .stat-label{font-size:11.5px;font-weight:700;letter-spacing:.6px;color:var(--gray-500);text-transform:uppercase;}
+  .stat-value{font-size:28px;font-weight:800;position:relative;z-index:1;letter-spacing:-.5px;transition:opacity .15s;}
+  .stat-card.c-blue{--card-accent:var(--blue);--card-accent-bg:var(--blue-bg);}
+  .stat-card.c-green{--card-accent:var(--green);--card-accent-bg:var(--green-bg);}
+  .stat-card.c-amber{--card-accent:var(--amber);--card-accent-bg:var(--amber-bg);}
+  .stat-card.c-purple{--card-accent:var(--purple);--card-accent-bg:var(--purple-bg);}
+  .stat-card.pulse .stat-value{animation:pulseVal .5s ease;}
+  @keyframes pulseVal{0%{opacity:.2;transform:scale(.92);}100%{opacity:1;transform:scale(1);}}
+
+  /* ---------- Filtros ---------- */
+  .filters{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--gray-100);flex-wrap:wrap;}
+  .filters .search-wrap{max-width:320px;flex:1 1 220px;}
+  select{padding:10px 34px 10px 12px;border-radius:10px;border:1px solid var(--gray-300);background:var(--gray-100) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="%237c8093"><path d="M5.5 7.5l4.5 5 4.5-5z"/></svg>') no-repeat right 10px center/12px;font-size:13px;color:var(--ink);appearance:none;-webkit-appearance:none;min-width:150px;}
+  .filters .count{margin-left:auto;font-size:12.5px;color:var(--gray-500);white-space:nowrap;}
+
+  /* ---------- Tabela ---------- */
+  table{width:100%;border-collapse:collapse;}
+  thead th{text-align:left;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--gray-500);font-weight:700;padding:12px 18px;background:var(--gray-100);border-bottom:1px solid var(--gray-100);white-space:nowrap;}
+  tbody td{padding:14px 18px;border-bottom:1px solid var(--gray-100);font-size:13.5px;vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:#fafbfe;}
+  input[type="checkbox"]{width:16px;height:16px;accent-color:var(--blue);cursor:pointer;}
+  .medico-cell{display:flex;align-items:center;gap:10px;}
+  .initials{width:36px;height:36px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;}
+  .medico-info b{display:block;font-size:13.5px;font-weight:700;}
+  .medico-info span{display:block;font-size:12px;color:var(--gray-500);margin-top:1px;}
+  .num-inscricao{color:var(--gray-700);font-weight:600;font-size:12.5px;}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:600;}
+  .badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .badge.ok{background:var(--green-bg);color:var(--green);}
+  .badge.warn{background:var(--amber-bg);color:var(--amber);}
+  .actions{display:flex;gap:6px;}
+  .action-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--gray-300);background:var(--white);display:flex;align-items:center;justify-content:center;color:var(--gray-700);}
+  .action-btn svg{width:14px;height:14px;}
+  .action-btn:hover{background:var(--gray-100);}
+  .action-btn.danger{color:var(--red);border-color:#f6d3cf;background:#fef4f3;}
+  .action-btn.danger:hover{background:#fde3e0;}
+  .action-btn.edit:hover{background:var(--blue-bg);border-color:var(--blue-bg);color:var(--blue);}
+  .empty-row td{text-align:center;color:var(--gray-500);padding:40px 18px;}
+
+  /* ---------- Formulário ---------- */
+  .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px 20px;}
+  .field{display:flex;flex-direction:column;gap:6px;}
+  .field.full{grid-column:1 / -1;}
+  .field label{font-size:12.5px;font-weight:600;color:var(--gray-700);}
+  .field .error{font-size:11.5px;color:var(--red);display:none;}
+  .field.has-error .error{display:block;}
+  .field.has-error input,.field.has-error select{border-color:var(--red);background:var(--red-bg);}
+  input[type="text"],input[type="email"],input[type="tel"],input[type="date"],select,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--gray-300);background:var(--white);font-size:13.5px;color:var(--ink);outline:none;transition:border-color .15s,box-shadow .15s;font-family:inherit;}
+  input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-bg);}
+  select{appearance:none;-webkit-appearance:none;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="%237c8093"><path d="M5.5 7.5l4.5 5 4.5-5z"/></svg>');background-repeat:no-repeat;background-position:right 12px center;background-size:12px;padding-right:34px;}
+  textarea{resize:vertical;min-height:80px;}
+  .form-actions{display:flex;justify-content:flex-end;gap:10px;padding-top:8px;border-top:1px solid var(--gray-100);margin-top:22px;}
+
+  /* ---------- Dashboard: colunas ---------- */
+  .dash-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:20px;align-items:start;}
+  .anon-cell{display:flex;align-items:center;gap:10px;}
+  .anon-avatar{width:36px;height:36px;border-radius:9px;flex-shrink:0;background:var(--gray-100);display:flex;align-items:center;justify-content:center;color:var(--gray-500);}
+  .anon-avatar svg{width:17px;height:17px;}
+  .anon-info span{display:block;font-size:12px;color:var(--gray-500);}
+  .anon-info b{display:block;font-size:12.5px;font-weight:700;color:var(--gray-700);letter-spacing:.2px;}
+  .quick-actions{display:flex;flex-direction:column;gap:10px;}
+  .quick-action{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;border:1px solid var(--gray-100);background:var(--white);transition:background .15s,border-color .15s;width:100%;text-align:left;}
+  .quick-action:hover{background:var(--gray-100);border-color:var(--gray-300);}
+  .quick-action .qa-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--qa-bg);color:var(--qa-fg);flex-shrink:0;}
+  .quick-action .qa-icon svg{width:16px;height:16px;}
+  .quick-action .qa-text b{display:block;font-size:13px;font-weight:700;}
+  .quick-action .qa-text span{display:block;font-size:11.5px;color:var(--gray-500);margin-top:1px;}
+  .bar-list{display:flex;flex-direction:column;gap:14px;}
+  .bar-item .bar-top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px;}
+  .bar-item .bar-top b{font-weight:700;}
+  .bar-item .bar-top span{color:var(--gray-500);}
+  .bar-track{width:100%;height:8px;border-radius:999px;background:var(--gray-100);overflow:hidden;}
+  .bar-fill{height:100%;border-radius:999px;background:var(--bar-color,var(--blue));transition:width .4s ease;}
+  .hosp-list{display:flex;flex-direction:column;}
+  .hosp-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-100);font-size:13px;}
+  .hosp-item:last-child{border-bottom:none;}
+  .hosp-item .hosp-name{display:flex;align-items:center;gap:10px;font-weight:600;}
+  .hosp-dot{width:8px;height:8px;border-radius:50%;background:var(--dot-color,var(--blue));flex-shrink:0;}
+  .hosp-count{color:var(--gray-500);font-variant-numeric:tabular-nums;}
+  .panel-note{display:flex;align-items:center;gap:8px;padding:10px 20px;font-size:12px;color:var(--gray-500);border-top:1px solid var(--gray-100);background:#fafbfe;}
+  .panel-note svg{width:14px;height:14px;flex-shrink:0;}
+
+  /* ---------- Modal de visualização ---------- */
+  .modal-overlay{position:fixed;inset:0;background:rgba(23,26,43,.45);display:none;align-items:center;justify-content:center;z-index:80;padding:20px;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:var(--white);border-radius:var(--radius);max-width:420px;width:100%;box-shadow:var(--shadow-md);overflow:hidden;}
+  .modal-header{padding:16px 20px;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;}
+  .modal-header h3{margin:0;font-size:15px;font-weight:700;}
+  .modal-close{width:28px;height:28px;border-radius:8px;border:none;background:var(--gray-100);display:flex;align-items:center;justify-content:center;color:var(--gray-700);}
+  .modal-body{padding:20px;display:flex;flex-direction:column;gap:12px;}
+  .modal-row{display:flex;justify-content:space-between;font-size:13px;gap:12px;}
+  .modal-row span:first-child{color:var(--gray-500);}
+  .modal-row span:last-child{font-weight:600;text-align:right;}
+
+  /* ---------- Toast ---------- */
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:#fff;padding:12px 18px;border-radius:10px;font-size:13.5px;box-shadow:var(--shadow-md);display:flex;align-items:center;gap:10px;opacity:0;transform:translateY(10px);transition:opacity .2s,transform .2s;pointer-events:none;z-index:100;}
+  .toast.show{opacity:1;transform:translateY(0);}
+  .toast svg{width:16px;height:16px;color:var(--green);flex-shrink:0;}
+
+  @media (max-width:1000px){.dash-grid{grid-template-columns:1fr;}}
+  @media (max-width:900px){.stats{grid-template-columns:repeat(2,1fr);}.form-grid{grid-template-columns:1fr;}.topbar{flex-wrap:wrap;}.search-wrap{order:3;max-width:100%;}}
+  @media (max-width:640px){.stats{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+  <!-- ===== Topbar ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <h1>SIGOM-MX</h1>
+      <div class="breadcrumb">Início / <b id="breadcrumbCurrent">Painel</b></div>
+    </div>
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input type="text" placeholder="Pesquisar...">
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn alert" title="Alertas">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a6 6 0 00-6 6v3.3c0 .6-.2 1.2-.6 1.7L4 15.5c-.7.9 0 2.5 1.3 2.5h13.4c1.3 0 2-1.6 1.3-2.5l-1.4-2.5a3 3 0 01-.6-1.7V8a6 6 0 00-6-6zM9.5 20a2.5 2.5 0 005 0h-5z"/></svg>
+      </button>
+      <button class="icon-btn" title="Mensagens">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+      </button>
+      <div class="avatar">AD</div>
+    </div>
+  </header>
+
+  <!-- ===== Nav tabs ===== -->
+  <nav class="nav-tabs">
+    <button class="nav-tab active" data-view="dashboard" onclick="switchView('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      Painel
+    </button>
+    <button class="nav-tab" data-view="lista" onclick="switchView('lista')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      Gestão de Médicos
+    </button>
+  </nav>
+
+  <div class="page">
+
+    <!-- =========================================================
+         VIEW: DASHBOARD
+         ========================================================= -->
+    <section class="view active" id="view-dashboard">
+      <div class="page-head">
+        <div>
+          <h2>Painel Geral</h2>
+          <p>Visão consolidada da Ordem dos Médicos do Moxico</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn btn-outline" onclick="switchView('lista')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+            Ver Todos os Médicos
+          </button>
+          <button class="btn btn-primary" onclick="openForm()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+            Adicionar Médico
+          </button>
+        </div>
+      </div>
+
+      <div class="stats" id="statsRow">
+        <div class="stat-card c-blue" id="statTotal">
+          <div class="row"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div><span class="stat-label">Total de Médicos</span></div>
+          <div class="stat-value" id="valTotal">0</div>
+        </div>
+        <div class="stat-card c-green" id="statActivos">
+          <div class="row"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg></div><span class="stat-label">Activos</span></div>
+          <div class="stat-value" id="valActivos">0</div>
+        </div>
+        <div class="stat-card c-amber" id="statSuspensos">
+          <div class="row"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div><span class="stat-label">Suspensos</span></div>
+          <div class="stat-value" id="valSuspensos">0</div>
+        </div>
+        <div class="stat-card c-purple" id="statNovos">
+          <div class="row"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></div><span class="stat-label">Novos (sessão)</span></div>
+          <div class="stat-value" id="valNovos">0</div>
+        </div>
+      </div>
+
+      <div class="dash-grid">
+        <section class="panel">
+          <div class="panel-header">
+            <h3>Registos Recentes</h3>
+            <button class="btn btn-outline" style="padding:7px 12px;font-size:12.5px;" onclick="switchView('lista')">Ver Lista Completa</button>
+          </div>
+          <table>
+            <thead><tr><th>Médico</th><th>Nº Inscrição</th><th>Especialidade</th><th>Hospital</th><th>Estado</th></tr></thead>
+            <tbody id="recentBody"></tbody>
+          </table>
+          <div class="panel-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            Nomes ocultos por privacidade neste painel. Aceda à lista completa para ver a identificação dos médicos.
+          </div>
+        </section>
+
+        <div style="display:flex;flex-direction:column;gap:20px;">
+          <section class="panel">
+            <div class="panel-header"><h3>Acções Rápidas</h3></div>
+            <div class="panel-body quick-actions">
+              <button class="quick-action" onclick="openForm()">
+                <div class="qa-icon" style="--qa-bg:var(--blue-bg);--qa-fg:var(--blue);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></div>
+                <div class="qa-text"><b>Adicionar Médico</b><span>Registar novo profissional</span></div>
+              </button>
+              <button class="quick-action" onclick="switchView('lista')">
+                <div class="qa-icon" style="--qa-bg:var(--green-bg);--qa-fg:var(--green);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
+                <div class="qa-text"><b>Consultar Médicos</b><span>Pesquisar e filtrar registos</span></div>
+              </button>
+              <button class="quick-action" onclick="showToast('Exportação (CSV/PDF) — ligar ao backend do SIGOM-MX.')">
+                <div class="qa-icon" style="--qa-bg:var(--purple-bg);--qa-fg:var(--purple);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 21h16"/></svg></div>
+                <div class="qa-text"><b>Exportar Relatório</b><span>Gerar ficheiro CSV/PDF</span></div>
+              </button>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header"><h3>Distribuição por Especialidade</h3></div>
+            <div class="panel-body bar-list" id="specialtyBars"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header"><h3>Hospitais</h3></div>
+            <div class="panel-body hosp-list" id="hospitalList"></div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         VIEW: LISTA DE MÉDICOS
+         ========================================================= -->
+    <section class="view" id="view-lista">
+      <div class="page-head">
+        <div>
+          <h2>Gestão de Médicos</h2>
+          <p><span id="listaSubtitleCount">0</span> médicos registados · filtrar, pesquisar e gerir perfis</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn btn-outline" onclick="showToast('Exportação (CSV/PDF) — ligar ao backend do SIGOM-MX.')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
+            Exportar
+          </button>
+          <button class="btn btn-primary" onclick="openForm()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+            Adicionar Médico
+          </button>
+        </div>
+      </div>
+
+      <section class="panel">
+        <div class="filters">
+          <div class="search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input type="text" id="tableSearch" placeholder="Pesquisar por nome ou nº inscrição...">
+          </div>
+          <select id="filterEspecialidade"><option>Todas Especialidades</option></select>
+          <select id="filterEstado">
+            <option>Todos os Estados</option>
+            <option value="ativo">Activo</option>
+            <option value="suspenso">Suspenso</option>
+          </select>
+          <select id="filterHospital"><option>Todos Hospitais</option></select>
+          <span class="count">A mostrar <b id="shownCount">0</b> de <b id="totalCountFilter">0</b></span>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="selectAll"></th>
+              <th>Médico</th><th>Nº Inscrição</th><th>Especialidade</th><th>Hospital</th><th>Contacto</th><th>Estado</th><th>Acções</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </section>
+    </section>
+
+    <!-- =========================================================
+         VIEW: FORMULÁRIO (ADICIONAR / EDITAR)
+         ========================================================= -->
+    <section class="view" id="view-form">
+      <div class="page-head">
+        <div>
+          <h2 id="formTitle">Adicionar Médico</h2>
+          <p id="formSubtitle">Preencha os dados abaixo para registar um novo médico na Ordem</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn btn-outline" onclick="switchView('lista')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Voltar à Lista
+          </button>
+        </div>
+      </div>
+
+      <form class="panel" id="formMedico" novalidate>
+        <div class="panel-header">
+          <h3 id="formPanelTitle">Dados do Médico</h3>
+          <span style="color:var(--gray-500);font-size:12.5px;">Campos com * são obrigatórios</span>
+        </div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="field full">
+              <label for="nome">Nome completo *</label>
+              <input type="text" id="nome" placeholder="Ex: Dr. António Muamba" required>
+              <span class="error">Indique o nome completo do médico.</span>
+            </div>
+            <div class="field">
+              <label for="numeroOrdem">Nº de Inscrição na Ordem *</label>
+              <input type="text" id="numeroOrdem" placeholder="Ex: OM-2026-0123" required>
+              <span class="error">Indique o número de inscrição.</span>
+            </div>
+            <div class="field">
+              <label for="bi">Bilhete de Identidade *</label>
+              <input type="text" id="bi" placeholder="Ex: 003456789LA042" required>
+              <span class="error">Indique o número do B.I.</span>
+            </div>
+            <div class="field">
+              <label for="telefone">Telefone *</label>
+              <input type="tel" id="telefone" placeholder="Ex: +244 924 123 456" required>
+              <span class="error">Indique um telefone válido.</span>
+            </div>
+            <div class="field">
+              <label for="email">Email</label>
+              <input type="email" id="email" placeholder="Ex: medico@exemplo.co.ao">
+              <span class="error">Indique um email válido.</span>
+            </div>
+            <div class="field">
+              <label for="especialidade">Especialidade *</label>
+              <select id="especialidade" required>
+                <option value="">Seleccione a especialidade</option>
+                <option>Cardiologia</option><option>Pediatria</option><option>Cirurgia Geral</option>
+                <option>Clínica Geral</option><option>Ginecologia</option><option>Ortopedia</option>
+                <option>Psiquiatria</option><option>Outra</option>
+              </select>
+              <span class="error">Seleccione a especialidade.</span>
+            </div>
+            <div class="field">
+              <label for="hospital">Hospital / Unidade Sanitária *</label>
+              <select id="hospital" required>
+                <option value="">Seleccione o hospital</option>
+                <option>H. Central Luena</option><option>H. Geral Moxico</option>
+                <option>Clínica Saúde+</option><option>Outro</option>
+              </select>
+              <span class="error">Seleccione o hospital.</span>
+            </div>
+            <div class="field">
+              <label for="estado">Estado</label>
+              <select id="estado">
+                <option value="ativo">Activo</option>
+                <option value="suspenso">Suspenso</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="dataInscricao">Data de Inscrição</label>
+              <input type="date" id="dataInscricao">
+            </div>
+            <div class="field full">
+              <label for="observacoes">Observações</label>
+              <textarea id="observacoes" placeholder="Notas adicionais sobre o médico (opcional)"></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" onclick="cancelForm()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="formSubmitBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+              Guardar Médico
+            </button>
+          </div>
+        </div>
+      </form>
+    </section>
+
+  </div>
+
+  <!-- ===== Modal: Ver Médico ===== -->
+  <div class="modal-overlay" id="viewModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Detalhes do Médico</h3>
+        <button class="modal-close" onclick="closeViewModal()">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- ===== Toast ===== -->
+  <div class="toast" id="toast">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+    <span id="toastMessage">Acção concluída.</span>
+  </div>
+
+<script>
+  /* =======================================================================
+     ESTADO DA APLICAÇÃO
+     "medicos" é a única fonte de verdade. Todas as views (Painel, Lista,
+     Formulário) leem e escrevem neste mesmo array, por isso qualquer
+     alteração (adicionar, editar, remover) reflecte-se imediatamente em
+     todos os locais — total, listas, gráficos, tudo recalculado a partir
+     daqui.
+     ======================================================================= */
+  const PALETTE = ["#5b6fe0","#e0568f","#2ba3d9","#20a97a","#9757e0","#e08a2e","#3b8fe0","#d9527a","#4fa07a","#c0783b"];
+
+  let medicos = [
+    { id:1, nome:"Dr. António Muamba",  numeroOrdem:"OM-2024-0089", bi:"003456781LA041", telefone:"+244 924 123 456", email:"antonio.muamba@saude.ao", especialidade:"Cardiologia",   hospital:"H. Central Luena", estado:"ativo",    dataInscricao:"2024-02-10", observacoes:"", criadoNestaSessao:false },
+    { id:2, nome:"Dra. Maria Fernandes", numeroOrdem:"OM-2024-0090", bi:"003456782LA042", telefone:"+244 912 654 321", email:"maria.fernandes@saude.ao", especialidade:"Pediatria",      hospital:"H. Geral Moxico",  estado:"ativo",    dataInscricao:"2024-02-14", observacoes:"", criadoNestaSessao:false },
+    { id:3, nome:"Dr. João Sebastião",   numeroOrdem:"OM-2024-0091", bi:"003456783LA043", telefone:"+244 933 789 012", email:"joao.sebastiao@saude.ao", especialidade:"Cirurgia Geral", hospital:"Clínica Saúde+",   estado:"suspenso", dataInscricao:"2024-03-01", observacoes:"", criadoNestaSessao:false },
+    { id:4, nome:"Dra. Carla Lussamba",  numeroOrdem:"OM-2024-0092", bi:"003456784LA044", telefone:"+244 921 345 678", email:"carla.lussamba@saude.ao", especialidade:"Ginecologia",    hospital:"H. Central Luena", estado:"ativo",    dataInscricao:"2024-03-08", observacoes:"", criadoNestaSessao:false },
+    { id:5, nome:"Dr. Pedro Ngola",      numeroOrdem:"OM-2024-0093", bi:"003456785LA045", telefone:"+244 945 210 987", email:"pedro.ngola@saude.ao",    especialidade:"Clínica Geral",  hospital:"H. Geral Moxico",  estado:"ativo",    dataInscricao:"2024-03-15", observacoes:"", criadoNestaSessao:false },
+    { id:6, nome:"Dra. Inês Sapalo",     numeroOrdem:"OM-2024-0094", bi:"003456786LA046", telefone:"+244 913 456 789", email:"ines.sapalo@saude.ao",    especialidade:"Cardiologia",    hospital:"Clínica Saúde+",   estado:"suspenso", dataInscricao:"2024-04-02", observacoes:"", criadoNestaSessao:false },
+    { id:7, nome:"Dr. Rui Muteka",       numeroOrdem:"OM-2024-0095", bi:"003456787LA047", telefone:"+244 927 654 123", email:"rui.muteka@saude.ao",     especialidade:"Pediatria",      hospital:"H. Central Luena", estado:"ativo",    dataInscricao:"2024-04-11", observacoes:"", criadoNestaSessao:false },
+    { id:8, nome:"Dra. Teresa Bunga",    numeroOrdem:"OM-2024-0096", bi:"003456788LA048", telefone:"+244 936 987 456", email:"teresa.bunga@saude.ao",   especialidade:"Cirurgia Geral", hospital:"H. Geral Moxico",  estado:"ativo",    dataInscricao:"2024-04-19", observacoes:"", criadoNestaSessao:false },
+  ];
+
+  let nextId = medicos.length + 1;
+  let editingId = null; // null = modo "adicionar"; caso contrário, id do médico em edição
+
+  /* -----------------------------------------------------------------------
+     Utilitários
+     ----------------------------------------------------------------------- */
+  function showToast(message){
+    const toast = document.getElementById("toast");
+    document.getElementById("toastMessage").textContent = message;
+    toast.classList.add("show");
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(() => toast.classList.remove("show"), 3000);
+  }
+
+  function getIniciais(nome){
+    const partes = nome.replace(/^(Dr\.|Dra\.)\s*/i, "").trim().split(/\s+/);
+    const a = partes[0]?.[0] || "";
+    const b = partes[partes.length - 1]?.[0] || "";
+    return (a + b).toUpperCase();
+  }
+
+  function corPara(id){
+    return PALETTE[id % PALETTE.length];
+  }
+
+  function pulse(elId){
+    const card = document.getElementById(elId);
+    if(!card) return;
+    card.classList.remove("pulse");
+    void card.offsetWidth; // reinicia a animação
+    card.classList.add("pulse");
+  }
+
+  /* -----------------------------------------------------------------------
+     Navegação entre views (SPA)
+     ----------------------------------------------------------------------- */
+  function switchView(viewName){
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    document.getElementById("view-" + viewName).classList.add("active");
+
+    document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
+    const tab = document.querySelector(`.nav-tab[data-view="${viewName}"]`);
+    if(tab) tab.classList.add("active");
+
+    const labels = { dashboard:"Painel", lista:"Gestão de Médicos", form: editingId ? "Editar Médico" : "Adicionar Médico" };
+    document.getElementById("breadcrumbCurrent").textContent = labels[viewName] || "Painel";
+
+    if(viewName === "dashboard") renderDashboard();
+    if(viewName === "lista") { populateFilterOptions(); applyFilters(); }
+
+    window.scrollTo({ top:0, behavior:"smooth" });
+  }
+
+  /* -----------------------------------------------------------------------
+     PAINEL (dashboard) — tudo recalculado a partir de "medicos"
+     ----------------------------------------------------------------------- */
+  function renderDashboard(){
+    const total = medicos.length;
+    const activos = medicos.filter(m => m.estado === "ativo").length;
+    const suspensos = medicos.filter(m => m.estado === "suspenso").length;
+    const novos = medicos.filter(m => m.criadoNestaSessao).length;
+
+    document.getElementById("valTotal").textContent = total;
+    document.getElementById("valActivos").textContent = activos;
+    document.getElementById("valSuspensos").textContent = suspensos;
+    document.getElementById("valNovos").textContent = novos;
+
+    ["statTotal","statActivos","statSuspensos","statNovos"].forEach(pulse);
+
+    // Registos recentes (últimos 5, sem nomes)
+    const recentes = [...medicos].sort((a,b) => b.id - a.id).slice(0, 5);
+    const recentBody = document.getElementById("recentBody");
+    recentBody.innerHTML = recentes.map(m => `
+      <tr>
+        <td>
+          <div class="anon-cell">
+            <div class="anon-avatar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>
+            </div>
+            <div class="anon-info"><b>Médico registado</b><span>Perfil restrito</span></div>
+          </div>
+        </td>
+        <td class="num-inscricao">#${m.numeroOrdem}</td>
+        <td>${m.especialidade}</td>
+        <td>${m.hospital}</td>
+        <td>${m.estado === "ativo" ? '<span class="badge ok">Activo</span>' : '<span class="badge warn">Suspenso</span>'}</td>
+      </tr>
+    `).join("") || `<tr class="empty-row"><td colspan="5">Nenhum médico registado ainda.</td></tr>`;
+
+    // Distribuição por especialidade
+    const porEspecialidade = {};
+    medicos.forEach(m => { porEspecialidade[m.especialidade] = (porEspecialidade[m.especialidade] || 0) + 1; });
+    const maxEsp = Math.max(1, ...Object.values(porEspecialidade));
+    const coresBar = ["var(--blue)","var(--green)","var(--purple)","var(--amber)","#e0483b","#2ba3d9"];
+    const specialtyBars = document.getElementById("specialtyBars");
+    const entradasEsp = Object.entries(porEspecialidade).sort((a,b) => b[1]-a[1]);
+    specialtyBars.innerHTML = entradasEsp.length ? entradasEsp.map(([nome,qtd], i) => `
+      <div class="bar-item">
+        <div class="bar-top"><b>${nome}</b><span>${qtd}</span></div>
+        <div class="bar-track"><div class="bar-fill" style="--bar-color:${coresBar[i % coresBar.length]};width:${Math.round(qtd/maxEsp*100)}%;"></div></div>
+      </div>
+    `).join("") : `<p style="color:var(--gray-500);font-size:13px;margin:0;">Sem dados suficientes.</p>`;
+
+    // Lista de hospitais
+    const porHospital = {};
+    medicos.forEach(m => { porHospital[m.hospital] = (porHospital[m.hospital] || 0) + 1; });
+    const coresDot = ["var(--blue)","var(--green)","var(--purple)","var(--amber)"];
+    const hospitalList = document.getElementById("hospitalList");
+    const entradasHosp = Object.entries(porHospital).sort((a,b) => b[1]-a[1]);
+    hospitalList.innerHTML = entradasHosp.length ? entradasHosp.map(([nome,qtd], i) => `
+      <div class="hosp-item">
+        <div class="hosp-name"><span class="hosp-dot" style="--dot-color:${coresDot[i % coresDot.length]};"></span>${nome}</div>
+        <span class="hosp-count">${qtd} médico${qtd === 1 ? "" : "s"}</span>
+      </div>
+    `).join("") : `<p style="color:var(--gray-500);font-size:13px;margin:0;">Sem dados suficientes.</p>`;
+  }
+
+  /* -----------------------------------------------------------------------
+     LISTA DE MÉDICOS
+     ----------------------------------------------------------------------- */
+  function populateFilterOptions(){
+    const espSel = document.getElementById("filterEspecialidade");
+    const hospSel = document.getElementById("filterHospital");
+    const especialidades = [...new Set(medicos.map(m => m.especialidade))].sort();
+    const hospitais = [...new Set(medicos.map(m => m.hospital))].sort();
+
+    const valEsp = espSel.value;
+    const valHosp = hospSel.value;
+
+    espSel.innerHTML = `<option>Todas Especialidades</option>` + especialidades.map(e => `<option>${e}</option>`).join("");
+    hospSel.innerHTML = `<option>Todos Hospitais</option>` + hospitais.map(h => `<option>${h}</option>`).join("");
+
+    if(especialidades.includes(valEsp)) espSel.value = valEsp;
+    if(hospitais.includes(valHosp)) hospSel.value = valHosp;
+  }
+
+  function badgeEstado(estado){
+    return estado === "ativo" ? '<span class="badge ok">Activo</span>' : '<span class="badge warn">Suspenso</span>';
+  }
+
+  function renderRows(list){
+    const tableBody = document.getElementById("tableBody");
+    document.getElementById("totalCountFilter").textContent = medicos.length;
+    document.getElementById("listaSubtitleCount").textContent = medicos.length;
+
+    if(list.length === 0){
+      tableBody.innerHTML = `<tr class="empty-row"><td colspan="8">Nenhum médico encontrado para os filtros aplicados.</td></tr>`;
+      document.getElementById("shownCount").textContent = 0;
+      return;
+    }
+
+    tableBody.innerHTML = list.map(m => `
+      <tr data-id="${m.id}">
+        <td><input type="checkbox"></td>
+        <td>
+          <div class="medico-cell">
+            <div class="initials" style="background:${corPara(m.id)}">${getIniciais(m.nome)}</div>
+            <div class="medico-info"><b>${m.nome}</b><span>${m.especialidade}</span></div>
+          </div>
+        </td>
+        <td class="num-inscricao">#${m.numeroOrdem}</td>
+        <td>${m.especialidade}</td>
+        <td>${m.hospital}</td>
+        <td>${m.telefone}</td>
+        <td>${badgeEstado(m.estado)}</td>
+        <td>
+          <div class="actions">
+            <button class="action-btn" title="Ver perfil" onclick="viewMedico(${m.id})">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <button class="action-btn edit" title="Editar" onclick="editMedico(${m.id})">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+            </button>
+            <button class="action-btn danger" title="Remover" onclick="deleteMedico(${m.id})">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+
+    document.getElementById("shownCount").textContent = list.length;
+  }
+
+  function applyFilters(){
+    const term = (document.getElementById("tableSearch").value || "").trim().toLowerCase();
+    const esp = document.getElementById("filterEspecialidade").value;
+    const est = document.getElementById("filterEstado").value;
+    const hosp = document.getElementById("filterHospital").value;
+
+    const filtrados = medicos.filter(m => {
+      const matchTerm = !term || m.nome.toLowerCase().includes(term) || m.numeroOrdem.toLowerCase().includes(term);
+      const matchEsp = esp === "Todas Especialidades" || m.especialidade === esp;
+      const matchEst = est === "Todos os Estados" || m.estado === est;
+      const matchHosp = hosp === "Todos Hospitais" || m.hospital === hosp;
+      return matchTerm && matchEsp && matchEst && matchHosp;
+    });
+
+    renderRows(filtrados);
+  }
+
+  ["tableSearch","filterEspecialidade","filterEstado","filterHospital"].forEach(id => {
+    document.getElementById(id).addEventListener("input", applyFilters);
+    document.getElementById(id).addEventListener("change", applyFilters);
+  });
+
+  document.getElementById("selectAll").addEventListener("change", (e) => {
+    document.querySelectorAll("#tableBody input[type='checkbox']").forEach(cb => cb.checked = e.target.checked);
+  });
+
+  /* -----------------------------------------------------------------------
+     Ver médico (modal read-only)
+     ----------------------------------------------------------------------- */
+  function viewMedico(id){
+    const m = medicos.find(x => x.id === id);
+    if(!m) return;
+    const linhas = [
+      ["Nome", m.nome],
+      ["Nº Inscrição", "#" + m.numeroOrdem],
+      ["B.I.", m.bi],
+      ["Telefone", m.telefone],
+      ["Email", m.email || "—"],
+      ["Especialidade", m.especialidade],
+      ["Hospital", m.hospital],
+      ["Estado", m.estado === "ativo" ? "Activo" : "Suspenso"],
+      ["Data de Inscrição", m.dataInscricao || "—"],
+      ["Observações", m.observacoes || "—"],
+    ];
+    document.getElementById("modalBody").innerHTML = linhas.map(([label,valor]) => `
+      <div class="modal-row"><span>${label}</span><span>${valor}</span></div>
+    `).join("");
+    document.getElementById("viewModal").classList.add("show");
+  }
+  function closeViewModal(){
+    document.getElementById("viewModal").classList.remove("show");
+  }
+
+  /* -----------------------------------------------------------------------
+     Remover médico
+     ----------------------------------------------------------------------- */
+  function deleteMedico(id){
+    const m = medicos.find(x => x.id === id);
+    if(!m) return;
+    if(!confirm(`Remover ${m.nome} da lista? Esta acção não pode ser desfeita.`)) return;
+    medicos = medicos.filter(x => x.id !== id);
+    applyFilters();
+    populateFilterOptions();
+    renderDashboard();
+    showToast(`${m.nome} foi removido.`);
+  }
+
+  /* -----------------------------------------------------------------------
+     FORMULÁRIO — Adicionar / Editar (mesmo formulário para ambos os modos)
+     ----------------------------------------------------------------------- */
+  const form = document.getElementById("formMedico");
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function openForm(){
+    editingId = null;
+    form.reset();
+    clearFormErrors();
+    document.getElementById("formTitle").textContent = "Adicionar Médico";
+    document.getElementById("formSubtitle").textContent = "Preencha os dados abaixo para registar um novo médico na Ordem";
+    document.getElementById("formPanelTitle").textContent = "Dados do Médico";
+    document.getElementById("formSubmitBtn").innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+      Guardar Médico`;
+    switchView("form");
+  }
+
+  function editMedico(id){
+    const m = medicos.find(x => x.id === id);
+    if(!m) return;
+    editingId = id;
+    clearFormErrors();
+
+    document.getElementById("nome").value = m.nome;
+    document.getElementById("numeroOrdem").value = m.numeroOrdem;
+    document.getElementById("bi").value = m.bi;
+    document.getElementById("telefone").value = m.telefone;
+    document.getElementById("email").value = m.email || "";
+    document.getElementById("especialidade").value = m.especialidade;
+    document.getElementById("hospital").value = m.hospital;
+    document.getElementById("estado").value = m.estado;
+    document.getElementById("dataInscricao").value = m.dataInscricao || "";
+    document.getElementById("observacoes").value = m.observacoes || "";
+
+    document.getElementById("formTitle").textContent = "Editar Médico";
+    document.getElementById("formSubtitle").textContent = `A editar o registo de ${m.nome}`;
+    document.getElementById("formPanelTitle").textContent = "Dados do Médico";
+    document.getElementById("formSubmitBtn").innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+      Guardar Alterações`;
+    switchView("form");
+  }
+
+  function cancelForm(){
+    if(confirm("Deseja cancelar? As alterações não guardadas serão perdidas.")){
+      editingId = null;
+      switchView("lista");
+    }
+  }
+
+  function clearFormErrors(){
+    document.querySelectorAll("#formMedico .field").forEach(f => f.classList.remove("has-error"));
+  }
+
+  function setFieldError(id, hasError){
+    document.getElementById(id).closest(".field").classList.toggle("has-error", hasError);
+  }
+
+  function validarFormulario(){
+    let valido = true;
+    const nome = document.getElementById("nome").value.trim();
+    const numeroOrdem = document.getElementById("numeroOrdem").value.trim();
+    const bi = document.getElementById("bi").value.trim();
+    const telefone = document.getElementById("telefone").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const especialidade = document.getElementById("especialidade").value;
+    const hospital = document.getElementById("hospital").value;
+
+    setFieldError("nome", nome.length === 0); if(!nome) valido = false;
+    setFieldError("numeroOrdem", numeroOrdem.length === 0); if(!numeroOrdem) valido = false;
+    setFieldError("bi", bi.length === 0); if(!bi) valido = false;
+    setFieldError("telefone", telefone.length === 0); if(!telefone) valido = false;
+    const emailInvalido = email.length > 0 && !emailRegex.test(email);
+    setFieldError("email", emailInvalido); if(emailInvalido) valido = false;
+    setFieldError("especialidade", especialidade === ""); if(!especialidade) valido = false;
+    setFieldError("hospital", hospital === ""); if(!hospital) valido = false;
+
+    return valido;
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if(!validarFormulario()){
+      showToast("Por favor, corrija os campos assinalados.");
+      return;
+    }
+
+    const dados = {
+      nome: document.getElementById("nome").value.trim(),
+      numeroOrdem: document.getElementById("numeroOrdem").value.trim(),
+      bi: document.getElementById("bi").value.trim(),
+      telefone: document.getElementById("telefone").value.trim(),
+      email: document.getElementById("email").value.trim(),
+      especialidade: document.getElementById("especialidade").value,
+      hospital: document.getElementById("hospital").value,
+      estado: document.getElementById("estado").value,
+      dataInscricao: document.getElementById("dataInscricao").value,
+      observacoes: document.getElementById("observacoes").value.trim(),
+    };
+
+    const btn = document.getElementById("formSubmitBtn");
+    btn.disabled = true;
+
+    // TODO: integração com API (Node.js + SQLite)
+    // if (editingId) { await fetch(`/api/medicos/${editingId}`, { method:'PUT', body: JSON.stringify(dados) }); }
+    // else { await fetch('/api/medicos', { method:'POST', body: JSON.stringify(dados) }); }
+    await new Promise(resolve => setTimeout(resolve, 400)); // simula latência de rede
+
+    if(editingId){
+      const idx = medicos.findIndex(x => x.id === editingId);
+      if(idx > -1){
+        medicos[idx] = { ...medicos[idx], ...dados };
+      }
+      showToast(`Médico "${dados.nome}" actualizado com sucesso.`);
+    } else {
+      medicos.push({ id: nextId++, ...dados, criadoNestaSessao: true });
+      showToast(`Médico "${dados.nome}" registado com sucesso.`);
+    }
+
+    btn.disabled = false;
+    editingId = null;
+    populateFilterOptions();
+    switchView("lista");
+  });
+
+  /* -----------------------------------------------------------------------
+     Inicialização
+     ----------------------------------------------------------------------- */
+  populateFilterOptions();
+  renderDashboard();
+  applyFilters();
+</script>
+</body>
+</html>
