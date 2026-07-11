@@ -25,7 +25,7 @@ ipcRenderer.on('authentication-result', (_event, result) => {
     showMessage(`Login realizado com sucesso! Redirecionando...`, 'success');
     localStorage.setItem('user', JSON.stringify(result.user));
     setTimeout(() => {
-      window.location.href = 'dashboard.html';
+      window.location.href = 'app.html';
     }, 800);
   } else {
     showMessage('Usuário ou senha inválidos.', 'error');
