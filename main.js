@@ -83,6 +83,57 @@ ipcMain.on('get-hospitais-lista', (event) => {
   });
 });
 
+// --- Manipuladores IPC para Pagamentos ---
+
+ipcMain.on('get-pagamentos-stats', async (event) => {
+  try {
+    const stats = await database.getPagamentosStats();
+    event.reply('pagamentos-stats-result', { success: true, stats });
+  } catch (error) {
+    event.reply('pagamentos-stats-result', { success: false, error: error.message });
+  }
+});
+
+ipcMain.on('get-pagamentos-lista', async (event) => {
+  try {
+    const lista = await database.getPagamentosLista();
+    event.reply('pagamentos-lista-result', { success: true, lista });
+  } catch (error) {
+    event.reply('pagamentos-lista-result', { success: false, error: error.message });
+  }
+});
+
+ipcMain.on('get-medicos-lista', async (event) => {
+  try {
+    const lista = await database.getMedicosLista();
+    event.reply('medicos-lista-result', { success: true, lista });
+  } catch (error) {
+    event.reply('medicos-lista-result', { success: false, error: error.message });
+  }
+});
+
+ipcMain.on('add-pagamento', async (event, dados) => {
+  try {
+    const result = await database.addPagamento(dados);
+    event.reply('add-pagamento-result', { success: true, id: result.id });
+  } catch (error) {
+    event.reply('add-pagamento-result', { success: false, error: error.message });
+  }
+});
+
+ipcMain.on('update-pagamento-status', async (event, { id, status }) => {
+  try {
+    const result = await database.updatePagamentoStatus(id, status);
+    if (result.changes === 0) {
+      event.reply('update-pagamento-status-result', { success: false, error: 'Pagamento não encontrado.' });
+      return;
+    }
+    event.reply('update-pagamento-status-result', { success: true });
+  } catch (error) {
+    event.reply('update-pagamento-status-result', { success: false, error: error.message });
+  }
+});
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
