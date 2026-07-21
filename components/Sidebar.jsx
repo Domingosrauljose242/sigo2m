@@ -1,23 +1,25 @@
 'use client';
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'fa-gauge-high', section: 'Principal' },
-  { id: 'pagamentos', label: 'Pagamentos', icon: 'fa-credit-card', badge: 0, section: null },
-  { id: null, label: 'Recibos', icon: 'fa-file-invoice', section: null },
-  { id: 'hospitais', label: 'Hospitais', icon: 'fa-hospital', section: 'Gestão' },
-  { id: 'medicos', label: 'Médicos', icon: 'fa-user-doctor', section: null },
-  { id: null, label: 'Eventos', icon: 'fa-calendar', section: null },
-  { id: null, label: 'Relatórios', icon: 'fa-chart-bar', section: 'Sistema' },
-  { id: null, label: 'Notificações', icon: 'fa-bell', badge: 5, section: null },
-  { id: null, label: 'Configurações', icon: 'fa-gear', section: null },
+  { id: 'dashboard', label: 'Dashboard', icon: 'fa-gauge-high', section: 'Principal', roles: ['superadmin', 'admin', 'user'] },
+  { id: 'pagamentos', label: 'Pagamentos', icon: 'fa-credit-card', section: null, roles: ['superadmin', 'admin', 'user'] },
+  { id: 'hospitais', label: 'Hospitais', icon: 'fa-hospital', section: 'Gestão', roles: ['superadmin', 'admin', 'user'] },
+  { id: 'medicos', label: 'Médicos', icon: 'fa-user-doctor', section: null, roles: ['superadmin', 'admin', 'user'] },
+  { id: 'notificacoes', label: 'Notificações', icon: 'fa-bell', section: 'Sistema', roles: ['superadmin', 'admin', 'user'] },
+  { id: 'auditoria', label: 'Registo de Atividade', icon: 'fa-shield-halved', section: null, roles: ['superadmin', 'admin'] },
+  { id: 'configuracoes', label: 'Configurações', icon: 'fa-gear', section: null, roles: ['superadmin', 'admin'] },
 ];
 
-export default function Sidebar({ active, onNavigate }) {
-  const user = typeof window !== 'undefined'
-    ? JSON.parse(localStorage.getItem('user') || '{"username":"Administrador"}')
-    : { username: 'Administrador' };
+const ROLE_LABELS = {
+  superadmin: 'Super Administrador',
+  admin: 'Administrador',
+  user: 'Utilizador',
+};
 
-  const initials = (user.username || 'AD').substring(0, 2).toUpperCase();
+export default function Sidebar({ active, onNavigate, user, onLogout }) {
+  const role = user?.role || 'user';
+  const visibleItems = NAV_ITEMS.filter(item => item.roles.includes(role));
+  const initials = ((user?.nome_completo || user?.username || 'AD')).substring(0, 2).toUpperCase();
 
   return (
     <aside className="sidebar">
@@ -34,20 +36,17 @@ export default function Sidebar({ active, onNavigate }) {
 
       {/* Nav */}
       <nav className="sidebar-nav" style={{ paddingTop: 8 }}>
-        {NAV_ITEMS.map((item, idx) => (
-          <div key={idx}>
+        {visibleItems.map((item, idx) => (
+          <div key={item.id || idx}>
             {item.section && (
               <div className="sidebar-section-label">{item.section}</div>
             )}
             <button
               className={`nav-item${active === item.id ? ' active' : ''}`}
               onClick={() => item.id && onNavigate(item.id)}
-              style={{ opacity: item.id ? 1 : 0.45 }}
-              disabled={!item.id}
             >
               <i className={`fas ${item.icon}`} style={{ width: 18, textAlign: 'center' }} />
               <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>
-              {item.badge > 0 && <span className="nav-badge">{item.badge}</span>}
             </button>
           </div>
         ))}
@@ -56,10 +55,19 @@ export default function Sidebar({ active, onNavigate }) {
       {/* Footer */}
       <div className="sidebar-footer">
         <div className="sidebar-footer-avatar">{initials}</div>
-        <div>
-          <div className="sidebar-footer-name">{user.username || 'Administrador'}</div>
-          <div className="sidebar-footer-role">Superadmin</div>
+        <div style={{ flex: 1 }}>
+          <div className="sidebar-footer-name">{user?.nome_completo || user?.username || 'Utilizador'}</div>
+          <div className="sidebar-footer-role">{ROLE_LABELS[role] || role}</div>
         </div>
+        <button
+          onClick={onLogout}
+          title="Terminar sessão"
+          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', fontSize: '14px' }}
+          onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+          onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+        >
+          <i className="fas fa-right-from-bracket" />
+        </button>
       </div>
     </aside>
   );

@@ -45,3 +45,4 @@ node_modules
 data/sigo2m.sqlite
 data\sigo2m.sqlite
 .data\sigo2m.sqlite
+release/

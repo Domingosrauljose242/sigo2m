@@ -47,6 +47,9 @@ export default function Pagamentos() {
   // UI States
   const [modalOpen, setModalOpen] = useState(false);
   const [toast, setToast] = useState({ msg: '', error: false });
+  const [activePlan, setActivePlan] = useState(null);
+  const [medicoSearch, setMedicoSearch] = useState('');
+  const [showMedicoDropdown, setShowMedicoDropdown] = useState(false);
   
   // Form State
   const [form, setForm] = useState({
@@ -97,8 +100,16 @@ export default function Pagamentos() {
         else showToast(`Erro: ${result.error}`, true);
       });
     }
+    const handleNavigate = (e) => {
+      if (e.detail?.to === 'pagamentos' && e.detail?.action === 'openModal') {
+        setModalOpen(true);
+      }
+    };
+    if (typeof window !== 'undefined') window.addEventListener('navigate', handleNavigate);
+
     return () => {
-      if (window.electron) {
+      if (typeof window !== 'undefined') window.removeEventListener('navigate', handleNavigate);
+      if (typeof window !== 'undefined' && window.electron) {
         ['pagamentos-stats-result', 'pagamentos-lista-result', 'medicos-lista-result',
          'add-pagamento-result', 'update-pagamento-status-result'].forEach(
           (c) => window.electron.removeAllListeners(c)
@@ -116,12 +127,29 @@ export default function Pagamentos() {
   });
 
   const toggleMes = (mesVal) => {
+    setActivePlan(null);
     setForm(prev => {
       const isSelected = prev.meses.includes(mesVal);
       return {
         ...prev,
         meses: isSelected ? prev.meses.filter(m => m !== mesVal) : [...prev.meses, mesVal]
       };
+    });
+  };
+
+  const selectPlano = (quantidade) => {
+    if (activePlan === quantidade) {
+      setActivePlan(null);
+      setForm(prev => ({ ...prev, meses: [] }));
+      return;
+    }
+    setActivePlan(quantidade);
+    setForm(prev => {
+      const primeirosMeses = [];
+      for (let i = 1; i <= quantidade; i++) {
+        primeirosMeses.push(i);
+      }
+      return { ...prev, meses: primeirosMeses };
     });
   };
 
@@ -199,9 +227,12 @@ export default function Pagamentos() {
       <div className="panel" style={{ padding: 0, overflow: 'hidden', marginBottom: 24 }}>
         <div className="panel-header" style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3>Matriz Anual de Quotas</h3>
-          <select value={anoQuotas} onChange={(e) => setAnoQuotas(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1' }}>
-            {[currentYear - 1, currentYear, currentYear + 1].map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
+          <input 
+            type="number" 
+            value={anoQuotas} 
+            onChange={(e) => setAnoQuotas(parseInt(e.target.value, 10) || new Date().getFullYear())} 
+            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', width: '100px' }} 
+          />
         </div>
         <div className="table-responsive">
           <table style={{ margin: 0, minWidth: 900 }}>
@@ -300,14 +331,49 @@ export default function Pagamentos() {
             <button className="close-btn" onClick={() => setModalOpen(false)}>×</button>
           </div>
           <form onSubmit={handleSubmit}>
-            <div className="form-group">
+            <div className="form-group" style={{ position: 'relative' }}>
               <label>Médico *</label>
-              <select required value={form.medico_id} onChange={(e) => setForm({ ...form, medico_id: e.target.value })}>
-                <option value="">Seleccionar médico...</option>
-                {medicos.map((m) => (
-                  <option key={m.id} value={m.id}>{m.nome}{m.especialidade ? ` — ${m.especialidade}` : ''}</option>
-                ))}
-              </select>
+              <div 
+                className="search-dropdown-input" 
+                style={{ position: 'relative', width: '100%' }}
+              >
+                <input
+                  type="text"
+                  placeholder="Pesquisar médico por nome..."
+                  value={form.medico_id ? medicos.find(m => m.id === form.medico_id)?.nome : medicoSearch}
+                  onChange={(e) => {
+                    setMedicoSearch(e.target.value);
+                    if (form.medico_id) setForm({ ...form, medico_id: '' });
+                    setShowMedicoDropdown(true);
+                  }}
+                  onFocus={() => setShowMedicoDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowMedicoDropdown(false), 200)}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6 }}
+                />
+                {showMedicoDropdown && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #cbd5e1', borderRadius: 6, maxHeight: 200, overflowY: 'auto', zIndex: 10, marginTop: 4, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                    {medicos.filter(m => (m.nome || '').toLowerCase().includes(medicoSearch.toLowerCase())).length === 0 ? (
+                      <div style={{ padding: '8px 12px', color: '#64748b' }}>Nenhum médico encontrado.</div>
+                    ) : (
+                      medicos.filter(m => (m.nome || '').toLowerCase().includes(medicoSearch.toLowerCase())).map(m => (
+                        <div 
+                          key={m.id} 
+                          onClick={() => {
+                            setForm({ ...form, medico_id: m.id });
+                            setMedicoSearch('');
+                            setShowMedicoDropdown(false);
+                          }}
+                          style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+                          onMouseEnter={(e) => e.target.style.background = '#f8fafc'}
+                          onMouseLeave={(e) => e.target.style.background = '#fff'}
+                        >
+                          {m.nome} {m.especialidade ? <span style={{ color: '#64748b', fontSize: '0.85em' }}>— {m.especialidade}</span> : ''}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="form-row">
@@ -317,12 +383,21 @@ export default function Pagamentos() {
               </div>
               <div className="form-group" style={{ flex: 1 }}>
                 <label>Valor por Mês (AOA) *</label>
-                <input type="number" required min="1" step="0.01" value={form.valorPorMes} onChange={(e) => setForm({ ...form, valorPorMes: e.target.value })} />
+                <input type="number" required min="1" step="0.01" value={form.valorPorMes} onChange={(e) => setForm({ ...form, valorPorMes: parseFloat(e.target.value) || 0 })} />
               </div>
             </div>
 
             <div className="form-group">
-              <label>Meses a Pagar * <span className="optional" style={{ float: 'right' }}>Total a cobrar: {formatMoeda(form.valorPorMes * form.meses.length)}</span></label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <label>Meses a Pagar *</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" onClick={() => selectPlano(3)} style={{ padding: '2px 8px', fontSize: '0.75rem', borderRadius: 4, border: '1px solid #cbd5e1', cursor: 'pointer', background: activePlan === 3 ? '#3b82f6' : '#f8fafc', color: activePlan === 3 ? '#fff' : 'inherit' }}>Trimestre</button>
+                  <button type="button" onClick={() => selectPlano(6)} style={{ padding: '2px 8px', fontSize: '0.75rem', borderRadius: 4, border: '1px solid #cbd5e1', cursor: 'pointer', background: activePlan === 6 ? '#3b82f6' : '#f8fafc', color: activePlan === 6 ? '#fff' : 'inherit' }}>Semestre</button>
+                  <button type="button" onClick={() => selectPlano(9)} style={{ padding: '2px 8px', fontSize: '0.75rem', borderRadius: 4, border: '1px solid #cbd5e1', cursor: 'pointer', background: activePlan === 9 ? '#3b82f6' : '#f8fafc', color: activePlan === 9 ? '#fff' : 'inherit' }}>9 Meses</button>
+                  <button type="button" onClick={() => selectPlano(12)} style={{ padding: '2px 8px', fontSize: '0.75rem', borderRadius: 4, border: '1px solid #cbd5e1', cursor: 'pointer', background: activePlan === 12 ? '#3b82f6' : '#f8fafc', color: activePlan === 12 ? '#fff' : 'inherit' }}>Anual</button>
+                </div>
+              </div>
+              <span className="optional" style={{ display: 'block', marginTop: 4 }}>Total a cobrar: {formatMoeda((parseFloat(form.valorPorMes) || 0) * form.meses.length)}</span>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginTop: 8 }}>
                 {MESES.map(m => (
                   <label key={m.val} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem', cursor: 'pointer' }}>
